@@ -318,6 +318,11 @@ td { padding: 13px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); font-s
 .ahorro-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .ahorro-calc { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
 .ahorro-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
 </style>
 </head>
 <body>
@@ -769,14 +774,23 @@ function iniciarSesionGoogle() {
 async function guardarIngreso() {
   const user = window.auth.currentUser;
   if (!user) { toast('Inicia sesión primero', 'error'); return; }
+  
   const desc = document.getElementById('ing-desc').value.trim();
   const monto = document.getElementById('ing-monto').value;
   if (!desc || !monto) { toast('Completa descripción y monto', 'error'); return; }
 
-  const mesVal = document.getElementById('ing-mes').value || mesActual;
-  const periodo = document.getElementById('ing-periodo').value || 'Q1';
-
+  // Seleccionar el botón de guardar de esta sección
+  const btn = document.querySelector('#sec-ingresos .btn-primary');
+  const textoOriginal = btn.innerHTML;
+  
   try {
+    // Estado de carga
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Guardando...';
+
+    const mesVal = document.getElementById('ing-mes').value || mesActual;
+    const periodo = document.getElementById('ing-periodo').value || 'Q1';
+
     const ref = window.collection(window.db, 'users', user.uid, 'ingresos');
     await window.addDoc(ref, {
       Descripcion: desc,
@@ -785,14 +799,19 @@ async function guardarIngreso() {
       Periodo: periodo,
       FechaRegistro: new Date().toISOString().split('T')[0]
     });
+    
     toast('✓ Ingreso guardado');
     document.getElementById('ing-desc').value = '';
     document.getElementById('ing-monto').value = '';
-    cargarIngresos();
-    actualizarDashboard();
+    await cargarIngresos();
+    await actualizarDashboard();
   } catch(e) {
     console.error(e);
     toast('Error al guardar', 'error');
+  } finally {
+    // Restaurar el botón pase lo que pase
+    btn.disabled = false;
+    btn.innerHTML = textoOriginal;
   }
 }
 
@@ -838,15 +857,22 @@ async function eliminarIngreso(id) {
 async function guardarGastoFijo() {
   const user = window.auth.currentUser;
   if (!user) { toast('Inicia sesión primero', 'error'); return; }
+  
   const nombre = document.getElementById('gf-nombre').value.trim();
   const monto = document.getElementById('gf-monto').value;
   if (!nombre || !monto) { toast('Completa nombre y monto', 'error'); return; }
 
-  const vencimiento = document.getElementById('gf-vencimiento').value || '';
-  const mesVal = document.getElementById('gf-mes').value || mesActual;
-  const periodo = document.getElementById('gf-periodo').value || 'Q2';
+  const btn = document.querySelector('#sec-gastos-fijos .btn-primary');
+  const textoOriginal = btn.innerHTML;
 
   try {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Guardando...';
+
+    const vencimiento = document.getElementById('gf-vencimiento').value || '';
+    const mesVal = document.getElementById('gf-mes').value || mesActual;
+    const periodo = document.getElementById('gf-periodo').value || 'Q2';
+
     const ref = window.collection(window.db, 'users', user.uid, 'gastosFijos');
     await window.addDoc(ref, {
       Nombre: nombre,
@@ -857,12 +883,19 @@ async function guardarGastoFijo() {
       Pagado: false,
       FechaRegistro: new Date().toISOString().split('T')[0]
     });
+    
     toast('✓ Gasto fijo guardado');
     document.getElementById('gf-nombre').value = '';
     document.getElementById('gf-monto').value = '';
-    cargarGastosFijos();
-    actualizarDashboard();
-  } catch(e) { toast('Error al guardar', 'error'); }
+    await cargarGastosFijos();
+    await actualizarDashboard();
+  } catch(e) {
+    console.error(e);
+    toast('Error al guardar', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = textoOriginal;
+  }
 }
 
 async function cargarGastosFijos() {
@@ -921,16 +954,23 @@ async function eliminarGastoFijo(id) {
 async function guardarGastoVariable() {
   const user = window.auth.currentUser;
   if (!user) { toast('Inicia sesión primero', 'error'); return; }
+  
   const desc = document.getElementById('gv-desc').value.trim();
   const cat = document.getElementById('gv-cat').value;
   const monto = document.getElementById('gv-monto').value;
   if (!desc || !monto) { toast('Completa descripción y monto', 'error'); return; }
 
-  const fecha = document.getElementById('gv-fecha').value || new Date().toISOString().split('T')[0];
-  const mesVal = document.getElementById('gv-mes').value || mesActual;
-  const periodo = document.getElementById('gv-periodo').value || 'Q2';
+  const btn = document.querySelector('#sec-gastos-variables .btn-primary');
+  const textoOriginal = btn.innerHTML;
 
   try {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Guardando...';
+
+    const fecha = document.getElementById('gv-fecha').value || new Date().toISOString().split('T')[0];
+    const mesVal = document.getElementById('gv-mes').value || mesActual;
+    const periodo = document.getElementById('gv-periodo').value || 'Q2';
+
     const ref = window.collection(window.db, 'users', user.uid, 'gastosVariables');
     await window.addDoc(ref, {
       Descripcion: desc,
@@ -940,12 +980,19 @@ async function guardarGastoVariable() {
       Mes: mesVal,
       Periodo: periodo
     });
+    
     toast('✓ Gasto variable guardado');
     document.getElementById('gv-desc').value = '';
     document.getElementById('gv-monto').value = '';
-    cargarGastosVariables();
-    actualizarDashboard();
-  } catch(e) { toast('Error al guardar', 'error'); }
+    await cargarGastosVariables();
+    await actualizarDashboard();
+  } catch(e) {
+    console.error(e);
+    toast('Error al guardar', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = textoOriginal;
+  }
 }
 
 async function cargarGastosVariables() {
@@ -990,18 +1037,32 @@ async function eliminarGastoVariable(id) {
 async function guardarAhorro() {
   const user = window.auth.currentUser;
   if (!user) return;
-  const pct = document.getElementById('ahorro-pct-input').value;
-  const mesVal = document.getElementById('ahorro-mes').value || mesActual;
+  
+  const btn = document.querySelector('#sec-ahorro .btn-primary');
+  const textoOriginal = btn.innerHTML;
 
   try {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Guardando...';
+
+    const pct = document.getElementById('ahorro-pct-input').value;
+    const mesVal = document.getElementById('ahorro-mes').value || mesActual;
+
     await window.setDoc(window.doc(window.db, 'users', user.uid, 'configuracionAhorro', mesVal), {
       PorcentajeAhorro: Number(pct),
       Mes: mesVal
     }, { merge: true });
+    
     toast('✓ Ahorro guardado');
-    calcularResumenAhorro();
-    actualizarDashboard();
-  } catch(e) { toast('Error', 'error'); }
+    await calcularResumenAhorro();
+    await actualizarDashboard();
+  } catch(e) {
+    console.error(e);
+    toast('Error', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = textoOriginal;
+  }
 }
 
 async function cargarConfiguracionAhorro() {
