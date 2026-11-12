@@ -73,6 +73,8 @@ if (user) {
   cargarCategoriasVariables();
   cargarGastosVariables();
   cargarConfiguracionAhorro();
+  inicializarMesSelector();
+  actualizarDashboard();
 }
 });
 </script>
@@ -395,9 +397,29 @@ td { padding: 13px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); font-s
     <div class="section-header">
       <div>
         <h1 class="section-title">Dashboard</h1>
-        <p class="section-subtitle" id="dash-subtitle">Inicia sesión para ver tus datos</p>
+        <p class="section-subtitle" id="dash-subtitle">Cargando...</p>
       </div>
       <span id="dash-period-pill" class="period-pill pill-all">📆 Mes Completo</span>
+    </div>
+    
+    <!-- Tarjetas de resumen -->
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Ingresos</div>
+        <div class="stat-value sv-green" id="d-ingresos">$0.00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Gastos Totales</div>
+        <div class="stat-value sv-red" id="d-gastos">$0.00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pagado</div>
+        <div class="stat-value sv-yellow" id="d-pagado">$0.00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Saldo Disponible</div>
+        <div class="stat-value sv-green" id="d-saldo">$0.00</div>
+      </div>
     </div>
   </div>
 
@@ -991,6 +1013,23 @@ async function calcularResumenAhorro() {
   } catch (e) {
     console.error(e);
   }
+}
+	function inicializarMesSelector() {
+  const select = document.getElementById('mesSelector');
+  if (!select) return;
+  
+  const fechaActual = new Date();
+  let opciones = '';
+  
+  // Generar los últimos 12 meses hacia atrás y 2 hacia adelante
+  for (let i = -6; i <= 2; i++) {
+    const d = new Date(fechaActual.getFullYear(), fechaActual.getMonth() + i, 1);
+    const val = d.toISOString().slice(0, 7);
+    const nombreMes = d.toLocaleString('es-ES', { month: 'long', year: 'numeric' });
+    const selected = val === mesActual ? 'selected' : '';
+    opciones += `<option value="${val}" ${selected}>${nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1)}</option>`;
+  }
+  select.innerHTML = opciones;
 }
 
 </script>
