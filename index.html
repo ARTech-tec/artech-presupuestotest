@@ -11,7 +11,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
-  import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, setDoc, getDoc, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAwUxIK6wRR-tCj4_PaYyGgvvsgK9R5lf4",
@@ -38,49 +38,36 @@
   window.doc = doc;
   window.deleteDoc = deleteDoc;
   window.updateDoc = updateDoc;
+  window.setDoc = setDoc;
+  window.getDoc = getDoc;
   window.serverTimestamp = serverTimestamp;
   window.query = query;
   window.where = where;
 
-onAuthStateChanged(auth, (user) => {
-  const loginScreen = document.getElementById('login-screen');
-  if (user) {
-    console.log("Usuario autenticado:", user.email);
-    // Ocultar pantalla de login
-    if (loginScreen) loginScreen.classList.add('hidden');
-    // Actualizar caja de usuario en el sidebar si existe
-    const userBox = document.getElementById('user-info-box');
-    if (userBox) userBox.innerHTML = `<p style="color:var(--green)">✓ ${user.email}</p>`;
-    
-    if (typeof cargarIngresos === 'function') cargarIngresos();
-	  if (typeof cargarGastosFijos === 'function') cargarGastosFijos();
-    if (typeof cargarCategoriasVariables === 'function') cargarCategoriasVariables();
-  } else {
-    console.log("No hay sesión activa.");
-    // Mostrar pantalla de login
-    if (loginScreen) loginScreen.classList.remove('hidden');
-  }
-  // Dentro de onAuthStateChanged:
-if (user) {
-  if (loginScreen) loginScreen.classList.add('hidden');
-  const userBox = document.getElementById('user-info-box');
-  if (userBox) userBox.innerHTML = `<p style="color:var(--green)">✓ ${user.email}</p>`;
-  
-  // Cargar datos iniciales
-  actualizarDashboard();
-  cargarIngresos();
-  cargarGastosFijos();
-  cargarCategoriasVariables();
-  cargarGastosVariables();
-  cargarConfiguracionAhorro();
-  inicializarMesSelector();
-  actualizarDashboard();
-}
-});
+  onAuthStateChanged(auth, (user) => {
+    const loginScreen = document.getElementById('login-screen');
+    if (user) {
+      console.log("Usuario autenticado:", user.email);
+      if (loginScreen) loginScreen.classList.add('hidden');
+      const userBox = document.getElementById('user-info-box');
+      if (userBox) userBox.innerHTML = `<p style="color:var(--green)">✓ ${user.email}</p>`;
+      
+      // Cargar datos iniciales
+      if (typeof inicializarMesSelector === 'function') inicializarMesSelector();
+      if (typeof actualizarDashboard === 'function') actualizarDashboard();
+      if (typeof cargarIngresos === 'function') cargarIngresos();
+      if (typeof cargarGastosFijos === 'function') cargarGastosFijos();
+      if (typeof cargarCategoriasVariables === 'function') cargarCategoriasVariables();
+      if (typeof cargarGastosVariables === 'function') cargarGastosVariables();
+      if (typeof cargarConfiguracionAhorro === 'function') cargarConfiguracionAhorro();
+    } else {
+      console.log("No hay sesión activa.");
+      if (loginScreen) loginScreen.classList.remove('hidden');
+    }
+  });
 </script>
 
 <style>
-
 /* ── PANTALLA DE LOGIN BLOQUEANTE ── */
 #login-screen {
   position: fixed; inset: 0; background: var(--bg);
@@ -392,7 +379,7 @@ td { padding: 13px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); font-s
 <!-- MAIN -->
 <main class="main">
 
- <!-- DASHBOARD -->
+  <!-- DASHBOARD -->
   <div id="sec-dashboard" class="section active">
     <div class="section-header">
       <div>
@@ -483,7 +470,7 @@ td { padding: 13px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); font-s
     </div>
   </div>
 
-<!-- INGRESOS -->
+  <!-- INGRESOS -->
   <div id="sec-ingresos" class="section">
     <div class="section-header">
       <div><h1 class="section-title">Ingresos</h1><p class="section-subtitle">Registra tus fuentes de ingreso</p></div>
@@ -531,28 +518,154 @@ td { padding: 13px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); font-s
   <!-- GASTOS FIJOS -->
   <div id="sec-gastos-fijos" class="section">
     <div class="section-header">
-      <div><h1 class="section-title">Gastos Fijos</h1><p class="section-subtitle">Renta, servicios, préstamos</p></div>
+      <div><h1 class="section-title">Gastos Fijos</h1><p class="section-subtitle">Renta, servicios, préstamos y más</p></div>
+    </div>
+    <div class="form-card">
+      <div class="form-card-title">➕ Nuevo Gasto Fijo</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Nombre del gasto</label>
+          <input type="text" id="gf-nombre" placeholder="Ej: Renta">
+        </div>
+        <div class="field">
+          <label>Monto</label>
+          <input type="number" id="gf-monto" placeholder="0.00" min="0" step="0.01">
+        </div>
+        <div class="field">
+          <label>Vencimiento (opcional)</label>
+          <input type="date" id="gf-vencimiento">
+        </div>
+        <div class="field">
+          <label>Mes</label>
+          <input type="month" id="gf-mes">
+        </div>
+        <div class="field">
+          <label>Quincena de pago</label>
+          <div class="qbtn-group">
+            <button class="qbtn" id="gf-q1-btn" onclick="selQForm('gf','Q1')">🔵 1a Quincena</button>
+            <button class="qbtn qsel-q1" id="gf-q2-btn" onclick="selQForm('gf','Q2')">🟡 2a Quincena</button>
+          </div>
+          <input type="hidden" id="gf-periodo" value="Q2">
+        </div>
+        <div class="field" style="justify-content:flex-end">
+          <button class="btn btn-primary" onclick="guardarGastoFijo()">Guardar gasto</button>
+        </div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header-bar">
+        <span>Gastos fijos del mes</span>
+        <span id="gf-total-label" style="color:var(--red);font-size:15px">Total: $0.00</span>
+      </div>
+      <table>
+        <thead><tr><th>Nombre</th><th>Monto</th><th>Vencimiento</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="gf-tbody"></tbody>
+      </table>
     </div>
   </div>
 
   <!-- GASTOS VARIABLES -->
   <div id="sec-gastos-variables" class="section">
     <div class="section-header">
-      <div><h1 class="section-title">Gastos Variables</h1><p class="section-subtitle">Gastos del día a día</p></div>
+      <div><h1 class="section-title">Gastos Variables</h1><p class="section-subtitle">Registra gastos del día a día</p></div>
+    </div>
+    <div class="form-card">
+      <div class="form-card-title">➕ Nuevo Gasto Variable</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Descripción</label>
+          <input type="text" id="gv-desc" placeholder="Ej: Supermercado">
+        </div>
+        <div class="field">
+          <label>Categoría</label>
+          <select id="gv-cat"></select>
+        </div>
+        <div class="field">
+          <label>Monto</label>
+          <input type="number" id="gv-monto" placeholder="0.00" min="0" step="0.01">
+        </div>
+        <div class="field">
+          <label>Fecha</label>
+          <input type="date" id="gv-fecha">
+        </div>
+        <div class="field">
+          <label>Mes</label>
+          <input type="month" id="gv-mes">
+        </div>
+        <div class="field">
+          <label>Quincena de pago</label>
+          <div class="qbtn-group">
+            <button class="qbtn" id="gv-q1-btn" onclick="selQForm('gv','Q1')">🔵 1a Quincena</button>
+            <button class="qbtn qsel-q1" id="gv-q2-btn" onclick="selQForm('gv','Q2')">🟡 2a Quincena</button>
+          </div>
+          <input type="hidden" id="gv-periodo" value="Q2">
+        </div>
+        <div class="field" style="justify-content:flex-end">
+          <button class="btn btn-primary" onclick="guardarGastoVariable()">Guardar gasto</button>
+        </div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header-bar">
+        <span>Gastos variables del mes</span>
+        <span id="gv-total-label" style="color:var(--red);font-size:15px">Total: $0.00</span>
+      </div>
+      <table>
+        <thead><tr><th>Descripción</th><th>Categoría</th><th>Monto</th><th>Fecha</th><th>Acciones</th></tr></thead>
+        <tbody id="gv-tbody"></tbody>
+      </table>
     </div>
   </div>
 
   <!-- AHORRO -->
   <div id="sec-ahorro" class="section">
     <div class="section-header">
-      <div><h1 class="section-title">Ahorro</h1><p class="section-subtitle">Configuración de metas</p></div>
+      <div><h1 class="section-title">Configuración de Ahorro</h1><p class="section-subtitle">Define tu meta mensual de ahorro</p></div>
+    </div>
+    <div class="ahorro-panel">
+      <div class="form-card">
+        <div class="form-card-title">🎯 Meta de Ahorro</div>
+        <div class="field" style="margin-bottom:20px">
+          <label>Porcentaje de ahorro sobre ingresos</label>
+          <div style="display:flex; align-items:center; gap:8px; margin-top:6px;">
+            <input type="number" id="ahorro-pct-input" min="0" max="60" value="20" oninput="sincronizarDesdeInput(this.value)" style="width:80px">
+            <span>%</span>
+          </div>
+          <input type="range" id="ahorro-slider" min="0" max="60" value="20" oninput="sincronizarDesdeSlider(this.value)" style="margin-top:10px; width:100%">
+        </div>
+        <div class="field" style="margin-bottom:16px">
+          <label>Mes</label>
+          <input type="month" id="ahorro-mes">
+        </div>
+        <button class="btn btn-primary" onclick="guardarAhorro()" style="width:100%; justify-content:center;">
+          💾 Guardar configuración
+        </button>
+      </div>
+      <div class="ahorro-calc">
+        <div class="chart-title">Resumen de Ahorro</div>
+        <div class="ahorro-row"><span>Total de ingresos</span><strong class="sv-green" id="ah-ingresos">$0.00</strong></div>
+        <div class="ahorro-row"><span>Porcentaje configurado</span><strong style="color:var(--accent2)" id="ah-pct">20%</strong></div>
+        <div class="ahorro-row"><span>Monto a ahorrar</span><strong style="color:var(--accent2)" id="ah-monto">$0.00</strong></div>
+        <div class="ahorro-row"><span>Total gastos</span><strong class="sv-red" id="ah-gastos">$0.00</strong></div>
+        <div class="ahorro-row" style="background:rgba(16,185,129,0.05); margin:0 -24px; padding:14px 24px; border:none;">
+          <span><strong>Saldo disponible</strong></span>
+          <strong class="sv-green" id="ah-saldo" style="font-size:22px">$0.00</strong>
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- HISTÓRICO -->
   <div id="sec-historico" class="section">
     <div class="section-header">
-      <div><h1 class="section-title">Histórico</h1><p class="section-subtitle">Evolución mensual</p></div>
+      <div><h1 class="section-title">Histórico Mensual</h1><p class="section-subtitle">Evolución de tu presupuesto</p></div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header-bar"><span>Meses registrados</span></div>
+      <table>
+        <thead><tr><th>Mes</th><th>Ingresos</th><th>Gastos</th><th>Ahorro</th><th>Saldo</th></tr></thead>
+        <tbody id="hist-tbody"><tr><td colspan="5" style="text-align:center; color:var(--txt3);">Historial en desarrollo</td></tr></tbody>
+      </table>
     </div>
   </div>
 
@@ -574,11 +687,9 @@ const categoriasVariables = [
   "Otros"
 ];
 
-// Función para inicializar las categorías en el selector <select id="gv-cat">
 function cargarCategoriasVariables() {
   const select = document.getElementById('gv-cat');
   if (!select) return;
-  
   let options = '';
   categoriasVariables.forEach(cat => {
     options += `<option value="${cat}">${cat}</option>`;
@@ -597,25 +708,26 @@ function toast(msg, type = 'success') {
   }
 }
 
+// ── ENRUTADOR CORREGIDO ──
 function goTo(section) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  
   const secEl = document.getElementById('sec-' + section);
   const navEl = document.querySelector(`[data-section="${section}"]`);
+  
   if (secEl) secEl.classList.add('active');
   if (navEl) navEl.classList.add('active');
   closeSidebar();
-  if(section === 'ingresos') cargarIngresos();
-  if (section === 'gastos-fijos') cargarGastosFijos(); // Add this line
-  if (section === 'gastos-variables') {
-  cargarCategoriasVariables();
-  cargarGastosVariables();
+
   if (section === 'dashboard') actualizarDashboard();
   if (section === 'ingresos') cargarIngresos();
   if (section === 'gastos-fijos') cargarGastosFijos();
-  if (section === 'gastos-variables') { cargarCategoriasVariables(); cargarGastosVariables(); }
+  if (section === 'gastos-variables') {
+    cargarCategoriasVariables();
+    cargarGastosVariables();
+  }
   if (section === 'ahorro') cargarConfiguracionAhorro();
-}
 }
 
 function toggleSidebar() {
@@ -627,22 +739,25 @@ function closeSidebar() {
   document.getElementById('overlay').classList.remove('show');
 }
 
-function cambiarMes(val) { mesActual = val; }
+function cambiarMes(val) {
+  mesActual = val;
+  actualizarDashboard();
+}
 function cambiarPeriodo(val) { periodoActual = val; }
+
 function selQForm(form, per) {
   document.getElementById(form + '-periodo').value = per;
   document.getElementById(form + '-q1-btn').className = 'qbtn' + (per === 'Q1' ? ' qsel-q1' : '');
   document.getElementById(form + '-q2-btn').className = 'qbtn' + (per === 'Q2' ? ' qsel-q1' : '');
 }
 
-// ── AUTENTICACIÓN Y FIRESTORE ──
+// ── AUTENTICACIÓN ──
 function iniciarSesionGoogle() {
   const provider = new window.GoogleAuthProvider();
   window.signInWithPopup(window.auth, provider)
     .then((result) => {
       toast('¡Bienvenido, ' + result.user.displayName + '!');
       document.getElementById('user-info-box').innerHTML = `<p style="color:var(--green)">Sesión: ${result.user.email}</p>`;
-      cargarIngresos();
     })
     .catch((error) => {
       console.error(error);
@@ -650,12 +765,10 @@ function iniciarSesionGoogle() {
     });
 }
 
+// ── INGRESOS ──
 async function guardarIngreso() {
   const user = window.auth.currentUser;
-  if (!user) {
-    toast('Por favor inicia sesión con Google primero', 'error');
-    return;
-  }
+  if (!user) { toast('Inicia sesión primero', 'error'); return; }
   const desc = document.getElementById('ing-desc').value.trim();
   const monto = document.getElementById('ing-monto').value;
   if (!desc || !monto) { toast('Completa descripción y monto', 'error'); return; }
@@ -672,13 +785,14 @@ async function guardarIngreso() {
       Periodo: periodo,
       FechaRegistro: new Date().toISOString().split('T')[0]
     });
-    toast('✓ Ingreso guardado en la nube');
+    toast('✓ Ingreso guardado');
     document.getElementById('ing-desc').value = '';
     document.getElementById('ing-monto').value = '';
     cargarIngresos();
+    actualizarDashboard();
   } catch(e) {
     console.error(e);
-    toast('Error al guardar en base de datos', 'error');
+    toast('Error al guardar', 'error');
   }
 }
 
@@ -706,39 +820,31 @@ async function cargarIngresos() {
 
     tbody.innerHTML = html || '<tr><td colspan="4" style="text-align:center; color:var(--txt3)">Sin ingresos registrados</td></tr>';
     document.getElementById('ing-total-label').textContent = `Total: $${total.toFixed(2)}`;
-  } catch(e) {
-    console.error(e);
-  }
+  } catch(e) { console.error(e); }
 }
 
 async function eliminarIngreso(id) {
   const user = window.auth.currentUser;
   if (!user || !confirm('¿Eliminar este ingreso?')) return;
   try {
-    const docRef = window.doc(window.db, 'users', user.uid, 'ingresos', id);
-    await window.deleteDoc(docRef);
+    await window.deleteDoc(window.doc(window.db, 'users', user.uid, 'ingresos', id));
     toast('Ingreso eliminado');
     cargarIngresos();
-  } catch(e) {
-    toast('Error al eliminar', 'error');
-  }
+    actualizarDashboard();
+  } catch(e) { toast('Error al eliminar', 'error'); }
 }
-// ── GASTOS FIJOS CON FIRESTORE ──
 
+// ── GASTOS FIJOS ──
 async function guardarGastoFijo() {
   const user = window.auth.currentUser;
-  if (!user) {
-    toast('Por favor inicia sesión con Google primero', 'error');
-    return;
-  }
-
+  if (!user) { toast('Inicia sesión primero', 'error'); return; }
   const nombre = document.getElementById('gf-nombre').value.trim();
-  const monto  = document.getElementById('gf-monto').value;
-  if (!nombre || !monto) { toast('Completa el nombre y el monto', 'error'); return; }
+  const monto = document.getElementById('gf-monto').value;
+  if (!nombre || !monto) { toast('Completa nombre y monto', 'error'); return; }
 
   const vencimiento = document.getElementById('gf-vencimiento').value || '';
-  const mesVal      = document.getElementById('gf-mes').value || mesActual;
-  const periodo     = document.getElementById('gf-periodo').value || 'Q2';
+  const mesVal = document.getElementById('gf-mes').value || mesActual;
+  const periodo = document.getElementById('gf-periodo').value || 'Q2';
 
   try {
     const ref = window.collection(window.db, 'users', user.uid, 'gastosFijos');
@@ -748,19 +854,15 @@ async function guardarGastoFijo() {
       Vencimiento: vencimiento,
       Mes: mesVal,
       Periodo: periodo,
-      Pagado: false, // Estado inicial
+      Pagado: false,
       FechaRegistro: new Date().toISOString().split('T')[0]
     });
-
     toast('✓ Gasto fijo guardado');
     document.getElementById('gf-nombre').value = '';
     document.getElementById('gf-monto').value = '';
-    document.getElementById('gf-vencimiento').value = '';
     cargarGastosFijos();
-  } catch (e) {
-    console.error(e);
-    toast('Error al guardar gasto fijo', 'error');
-  }
+    actualizarDashboard();
+  } catch(e) { toast('Error al guardar', 'error'); }
 }
 
 async function cargarGastosFijos() {
@@ -777,9 +879,7 @@ async function cargarGastosFijos() {
       const r = docSnap.data();
       const id = docSnap.id;
       total += Number(r.Monto || 0);
-
-      const estaPagado = r.Pagado === true;
-      const btnEstado = estaPagado 
+      const btnEstado = r.Pagado 
         ? `<button class="btn btn-sm btn-success" onclick="toggleEstadoGastoFijo('${id}', false)">✓ Pagado</button>`
         : `<button class="btn btn-sm" style="background:var(--bg3); color:var(--txt2); border:1px solid var(--border)" onclick="toggleEstadoGastoFijo('${id}', true)">⏳ Pendiente</button>`;
 
@@ -792,63 +892,42 @@ async function cargarGastosFijos() {
       </tr>`;
     });
 
-    tbody.innerHTML = html || '<tr><td colspan="5" style="text-align:center; color:var(--txt3)">Sin gastos fijos registrados</td></tr>';
-    const totalLabel = document.getElementById('gf-total-label');
-    if (totalLabel) totalLabel.textContent = `Total: $${total.toFixed(2)}`;
-  } catch (e) {
-    console.error(e);
-  }
+    tbody.innerHTML = html || '<tr><td colspan="5" style="text-align:center; color:var(--txt3)">Sin gastos fijos</td></tr>';
+    document.getElementById('gf-total-label').textContent = `Total: $${total.toFixed(2)}`;
+  } catch(e) { console.error(e); }
 }
 
-async function toggleEstadoGastoFijo(id, nuevoEstado) {
+async function toggleEstadoGastoFijo(id, estado) {
   const user = window.auth.currentUser;
   if (!user) return;
-
   try {
-    const docRef = window.doc(window.db, 'users', user.uid, 'gastosFijos', id);
-    await window.updateDoc(docRef, { Pagado: nuevoEstado });
-    toast(nuevoEstado ? 'Gasto marcado como pagado' : 'Gasto marcado como pendiente');
+    await window.updateDoc(window.doc(window.db, 'users', user.uid, 'gastosFijos', id), { Pagado: estado });
     cargarGastosFijos();
-  } catch (e) {
-    console.error(e);
-    toast('Error al actualizar estado', 'error');
-  }
+    actualizarDashboard();
+  } catch(e) { console.error(e); }
 }
 
 async function eliminarGastoFijo(id) {
   const user = window.auth.currentUser;
-  if (!user || !confirm('¿Eliminar este gasto fijo?')) return;
-
+  if (!user || !confirm('¿Eliminar?')) return;
   try {
-    const docRef = window.doc(window.db, 'users', user.uid, 'gastosFijos', id);
-    await window.deleteDoc(docRef);
-    toast('Gasto fijo eliminado');
+    await window.deleteDoc(window.doc(window.db, 'users', user.uid, 'gastosFijos', id));
     cargarGastosFijos();
-  } catch (e) {
-    toast('Error al eliminar', 'error');
-  }
+    actualizarDashboard();
+  } catch(e) { console.error(e); }
 }
 
-// ── GASTOS VARIABLES CON FIRESTORE ──
-
+// ── GASTOS VARIABLES ──
 async function guardarGastoVariable() {
   const user = window.auth.currentUser;
-  if (!user) {
-    toast('Por favor inicia sesión con Google primero', 'error');
-    return;
-  }
-
-  const desc  = document.getElementById('gv-desc').value.trim();
-  const cat   = document.getElementById('gv-cat').value;
+  if (!user) { toast('Inicia sesión primero', 'error'); return; }
+  const desc = document.getElementById('gv-desc').value.trim();
+  const cat = document.getElementById('gv-cat').value;
   const monto = document.getElementById('gv-monto').value;
-  
-  if (!desc || !monto) {
-    toast('Completa la descripción y el monto', 'error');
-    return;
-  }
+  if (!desc || !monto) { toast('Completa descripción y monto', 'error'); return; }
 
-  const fecha   = document.getElementById('gv-fecha').value || new Date().toISOString().split('T')[0];
-  const mesVal  = document.getElementById('gv-mes').value || mesActual;
+  const fecha = document.getElementById('gv-fecha').value || new Date().toISOString().split('T')[0];
+  const mesVal = document.getElementById('gv-mes').value || mesActual;
   const periodo = document.getElementById('gv-periodo').value || 'Q2';
 
   try {
@@ -859,19 +938,14 @@ async function guardarGastoVariable() {
       Monto: Number(monto),
       Fecha: fecha,
       Mes: mesVal,
-      Periodo: periodo,
-      FechaRegistro: new Date().toISOString().split('T')[0]
+      Periodo: periodo
     });
-
     toast('✓ Gasto variable guardado');
     document.getElementById('gv-desc').value = '';
     document.getElementById('gv-monto').value = '';
-    document.getElementById('gv-fecha').value = '';
     cargarGastosVariables();
-  } catch (e) {
-    console.error(e);
-    toast('Error al guardar gasto variable', 'error');
-  }
+    actualizarDashboard();
+  } catch(e) { toast('Error al guardar', 'error'); }
 }
 
 async function cargarGastosVariables() {
@@ -888,116 +962,96 @@ async function cargarGastosVariables() {
       const r = docSnap.data();
       const id = docSnap.id;
       total += Number(r.Monto || 0);
-
       html += `<tr>
         <td>${r.Descripcion}</td>
-        <td><span class="badge" style="background:rgba(168,85,247,0.15); color:var(--accent2);">${r.Categoria || 'General'}</span></td>
+        <td><span class="badge" style="background:rgba(168,85,247,0.15); color:var(--accent2);">${r.Categoria}</span></td>
         <td><strong class="sv-yellow">$${Number(r.Monto).toFixed(2)}</strong></td>
         <td style="color:var(--txt3)">${r.Fecha || '—'}</td>
         <td><button class="btn btn-sm btn-danger" onclick="eliminarGastoVariable('${id}')">✕</button></td>
       </tr>`;
     });
 
-    tbody.innerHTML = html || '<tr><td colspan="5" style="text-align:center; color:var(--txt3)">Sin gastos variables registrados</td></tr>';
-    const totalLabel = document.getElementById('gv-total-label');
-    if (totalLabel) totalLabel.textContent = `Total: $${total.toFixed(2)}`;
-  } catch (e) {
-    console.error(e);
-  }
+    tbody.innerHTML = html || '<tr><td colspan="5" style="text-align:center; color:var(--txt3)">Sin gastos variables</td></tr>';
+    document.getElementById('gv-total-label').textContent = `Total: $${total.toFixed(2)}`;
+  } catch(e) { console.error(e); }
 }
 
 async function eliminarGastoVariable(id) {
   const user = window.auth.currentUser;
-  if (!user || !confirm('¿Eliminar este gasto variable?')) return;
-
+  if (!user || !confirm('¿Eliminar?')) return;
   try {
-    const docRef = window.doc(window.db, 'users', user.uid, 'gastosVariables', id);
-    await window.deleteDoc(docRef);
-    toast('Gasto variable eliminado');
+    await window.deleteDoc(window.doc(window.db, 'users', user.uid, 'gastosVariables', id));
     cargarGastosVariables();
-  } catch (e) {
-    toast('Error al eliminar', 'error');
-  }
+    actualizarDashboard();
+  } catch(e) { console.error(e); }
 }
 
-// ── CONFIGURACIÓN DE AHORRO CON FIRESTORE ──
-
+// ── AHORRO Y DASHBOARD ──
 async function guardarAhorro() {
   const user = window.auth.currentUser;
-  if (!user) {
-    toast('Por favor inicia sesión con Google primero', 'error');
-    return;
-  }
-
-  const pctInput = document.getElementById('ahorro-pct-input').value;
+  if (!user) return;
+  const pct = document.getElementById('ahorro-pct-input').value;
   const mesVal = document.getElementById('ahorro-mes').value || mesActual;
 
-  if (pctInput === '' || isNaN(pctInput)) {
-    toast('Ingresa un porcentaje válido', 'error');
-    return;
-  }
-
   try {
-    // Usamos el mes como ID del documento para que cada mes tenga su propia configuración de ahorro
-    const docRef = window.doc(window.db, 'users', user.uid, 'configuracionAhorro', mesVal);
-    await window.setDoc(docRef, {
-      PorcentajeAhorro: Number(pctInput),
-      Mes: mesVal,
-      FechaActualizacion: new Date().toISOString().split('T')[0]
+    await window.setDoc(window.doc(window.db, 'users', user.uid, 'configuracionAhorro', mesVal), {
+      PorcentajeAhorro: Number(pct),
+      Mes: mesVal
     }, { merge: true });
-
-    toast('✓ Configuración de ahorro guardada');
+    toast('✓ Ahorro guardado');
     calcularResumenAhorro();
-  } catch (e) {
-    console.error(e);
-    toast('Error al guardar ahorro', 'error');
-  }
+    actualizarDashboard();
+  } catch(e) { toast('Error', 'error'); }
 }
 
 async function cargarConfiguracionAhorro() {
   const user = window.auth.currentUser;
   if (!user) return;
-
-  const mesVal = document.getElementById('ahorro-mes')?.value || mesActual;
-
   try {
-    const docRef = window.doc(window.db, 'users', user.uid, 'configuracionAhorro', mesVal);
-    const snap = await window.getDoc(docRef);
-
+    const snap = await window.getDoc(window.doc(window.db, 'users', user.uid, 'configuracionAhorro', mesActual));
     if (snap.exists()) {
-      const data = snap.data();
-      const pct = data.PorcentajeAhorro || 20;
-      const input = document.getElementById('ahorro-pct-input');
-      const slider = document.getElementById('ahorro-slider');
-      if (input) input.value = pct;
-      if (slider) slider.value = pct;
-      const lblPct = document.getElementById('ah-pct');
-      if (lblPct) lblPct.textContent = pct + '%';
+      const pct = snap.data().PorcentajeAhorro || 20;
+      document.getElementById('ahorro-pct-input').value = pct;
+      document.getElementById('ahorro-slider').value = pct;
+      document.getElementById('ah-pct').textContent = pct + '%';
     }
     calcularResumenAhorro();
-  } catch (e) {
-    console.error(e);
-  }
+  } catch(e) { console.error(e); }
 }
 
-// Funciones para sincronizar el slider y el input visualmente
 function sincronizarDesdeInput(val) {
-  const slider = document.getElementById('ahorro-slider');
-  if (slider) slider.value = val;
-  const lbl = document.getElementById('ah-pct');
-  if (lbl) lbl.textContent = val + '%';
+  document.getElementById('ahorro-slider').value = val;
+  document.getElementById('ah-pct').textContent = val + '%';
 }
-
 function sincronizarDesdeSlider(val) {
-  const input = document.getElementById('ahorro-pct-input');
-  if (input) input.value = val;
-  const lbl = document.getElementById('ah-pct');
-  if (lbl) lbl.textContent = val + '%';
+  document.getElementById('ahorro-pct-input').value = val;
+  document.getElementById('ah-pct').textContent = val + '%';
 }
 
-	function cambiarMes(val) {
-  mesActual = val;
-  actualizarDashboard();
+async function calcularResumenAhorro() {
+  const user = window.auth.currentUser;
+  if (!user) return;
+  try {
+    const ingSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'ingresos'));
+    let totalIng = 0;
+    ingSnap.forEach(d => totalIng += Number(d.data().Monto || 0));
+
+    const gfSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'gastosFijos'));
+    let totalGastos = 0;
+    gfSnap.forEach(d => totalGastos += Number(d.data().Monto || 0));
+
+    const gvSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'gastosVariables'));
+    gvSnap.forEach(d => totalGastos += Number(d.data().Monto || 0));
+
+    const pct = Number(document.getElementById('ahorro-pct-input')?.value || 20);
+    const montoAhorro = (totalIng * pct) / 100;
+    const saldoFinal = totalIng - totalGastos - montoAhorro;
+
+    document.getElementById('ah-ingresos').textContent = `$${totalIng.toFixed(2)}`;
+    document.getElementById('ah-monto').textContent = `$${montoAhorro.toFixed(2)}`;
+    document.getElementById('ah-gastos').textContent = `$${totalGastos.toFixed(2)}`;
+    document.getElementById('ah-saldo').textContent = `$${saldoFinal.toFixed(2)}`;
+  } catch(e) { console.error(e); }
 }
 
 async function actualizarDashboard() {
@@ -1005,45 +1059,35 @@ async function actualizarDashboard() {
   if (!user) return;
 
   try {
-    // 1. Obtener Ingresos
     const ingSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'ingresos'));
     let totalIng = 0, q1Ing = 0, q2Ing = 0;
     ingSnap.forEach(doc => {
       const r = doc.data();
       const m = Number(r.Monto || 0);
-      if (r.Mes === mesActual || !r.Mes) {
-        totalIng += m;
-        if (r.Periodo === 'Q1') q1Ing += m; else q2Ing += m;
-      }
+      totalIng += m;
+      if (r.Periodo === 'Q1') q1Ing += m; else q2Ing += m;
     });
 
-    // 2. Obtener Gastos Fijos
     const gfSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'gastosFijos'));
-    let totalGf = 0, q1Gf = 0, q2Gf = 0, pagadoFijos = 0, pendienteFijos = 0;
+    let totalGf = 0, q1Gf = 0, q2Gf = 0, pagadoFijos = 0;
     gfSnap.forEach(doc => {
       const r = doc.data();
       const m = Number(r.Monto || 0);
-      if (r.Mes === mesActual || !r.Mes) {
-        totalGf += m;
-        if (r.Periodo === 'Q1') q1Gf += m; else q2Gf += m;
-        if (r.Pagado) pagadoFijos += m; else pendienteFijos += m;
-      }
+      totalGf += m;
+      if (r.Periodo === 'Q1') q1Gf += m; else q2Gf += m;
+      if (r.Pagado) pagadoFijos += m;
     });
 
-    // 3. Obtener Gastos Variables
     const gvSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'gastosVariables'));
     let totalGv = 0, q1Gv = 0, q2Gv = 0;
     gvSnap.forEach(doc => {
       const r = doc.data();
       const m = Number(r.Monto || 0);
-      if (r.Mes === mesActual || !r.Mes) {
-        totalGv += m;
-        if (r.Periodo === 'Q1') q1Gv += m; else q2Gv += m;
-      }
+      totalGv += m;
+      if (r.Periodo === 'Q1') q1Gv += m; else q2Gv += m;
     });
 
-    // 4. Obtener Meta de Ahorro del Mes
-    let porcentajeAhorro = 20; // Default
+    let porcentajeAhorro = 20;
     try {
       const ahDoc = await window.getDoc(window.doc(window.db, 'users', user.uid, 'configuracionAhorro', mesActual));
       if (ahDoc.exists()) porcentajeAhorro = Number(ahDoc.data().PorcentajeAhorro || 20);
@@ -1051,23 +1095,21 @@ async function actualizarDashboard() {
 
     const montoAhorro = (totalIng * porcentajeAhorro) / 100;
     const gastosTotales = totalGf + totalGv;
-    const pagadoTotal = pagadoFijos; // Puedes sumar pagos variables si aplicara
+    const pagadoTotal = pagadoFijos;
     const pendienteTotal = (totalGf - pagadoFijos) + totalGv;
     const saldoDisponible = totalIng - gastosTotales - montoAhorro;
     const usoPct = totalIng > 0 ? Math.min(100, Math.round((gastosTotales / totalIng) * 100)) : 0;
 
-    // Pintar valores en el HTML de Quincenas
     document.getElementById('qq1-ing').textContent = `$${q1Ing.toFixed(2)}`;
     document.getElementById('qq1-gf').textContent = `$${q1Gf.toFixed(2)}`;
     document.getElementById('qq1-gv').textContent = `$${q1Gv.toFixed(2)}`;
-    document.getElementById('qq1-pagado').textContent = `$${q1Gf.toFixed(2)}`; // O ajustado a pagados Q1
+    document.getElementById('qq1-pagado').textContent = `$${q1Gf.toFixed(2)}`;
 
     document.getElementById('qq2-ing').textContent = `$${q2Ing.toFixed(2)}`;
     document.getElementById('qq2-gf').textContent = `$${q2Gf.toFixed(2)}`;
     document.getElementById('qq2-gv').textContent = `$${q2Gv.toFixed(2)}`;
     document.getElementById('qq2-pagado').textContent = `$${q2Gf.toFixed(2)}`;
 
-    // Pintar valores en las 6 Tarjetas Principales
     document.getElementById('d-ingresos').textContent = `$${totalIng.toFixed(2)}`;
     document.getElementById('d-gastos').textContent = `$${gastosTotales.toFixed(2)}`;
     document.getElementById('d-pagado').textContent = `$${pagadoTotal.toFixed(2)}`;
@@ -1076,52 +1118,16 @@ async function actualizarDashboard() {
     document.getElementById('d-saldo').textContent = `$${saldoDisponible.toFixed(2)}`;
     document.getElementById('d-ahorro-sub').textContent = `${porcentajeAhorro}% sobre ingresos`;
 
-    // Actualizar barra de progreso
     document.getElementById('prog-pct').textContent = `${usoPct}%`;
     document.getElementById('prog-bar').style.width = `${usoPct}%`;
-
-  } catch (e) {
-    console.error("Error al calcular el dashboard:", e);
-  }
+  } catch(e) { console.error(e); }
 }
 
-// Función auxiliar para calcular el resumen de la pestaña de ahorro
-async function calcularResumenAhorro() {
-  const user = window.auth.currentUser;
-  if (!user) return;
-
-  try {
-    const ingSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'ingresos'));
-    let totalIng = 0;
-    ingSnap.forEach(doc => { totalIng += Number(doc.data().Monto || 0); });
-
-    const gfSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'gastosFijos'));
-    let totalGastos = 0;
-    gfSnap.forEach(doc => { totalGastos += Number(doc.data().Monto || 0); });
-
-    const gvSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'gastosVariables'));
-    gvSnap.forEach(doc => { totalGastos += Number(doc.data().Monto || 0); });
-
-    const pct = Number(document.getElementById('ahorro-pct-input')?.value || 20);
-    const montoAhorro = (totalIng * pct) / 100;
-    const saldoFinal = totalIng - totalGastos - montoAhorro;
-
-    if (document.getElementById('ah-ingresos')) document.getElementById('ah-ingresos').textContent = `$${totalIng.toFixed(2)}`;
-    if (document.getElementById('ah-monto')) document.getElementById('ah-monto').textContent = `$${montoAhorro.toFixed(2)}`;
-    if (document.getElementById('ah-gastos')) document.getElementById('ah-gastos').textContent = `$${totalGastos.toFixed(2)}`;
-    if (document.getElementById('ah-saldo')) document.getElementById('ah-saldo').textContent = `$${saldoFinal.toFixed(2)}`;
-  } catch (e) {
-    console.error(e);
-  }
-}
-	function inicializarMesSelector() {
+function inicializarMesSelector() {
   const select = document.getElementById('mesSelector');
   if (!select) return;
-  
   const fechaActual = new Date();
   let opciones = '';
-  
-  // Generar los últimos 12 meses hacia atrás y 2 hacia adelante
   for (let i = -6; i <= 2; i++) {
     const d = new Date(fechaActual.getFullYear(), fechaActual.getMonth() + i, 1);
     const val = d.toISOString().slice(0, 7);
@@ -1131,7 +1137,6 @@ async function calcularResumenAhorro() {
   }
   select.innerHTML = opciones;
 }
-
 </script>
 </body>
 </html>
