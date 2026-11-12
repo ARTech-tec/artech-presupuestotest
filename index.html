@@ -44,27 +44,59 @@
   window.query = query;
   window.where = where;
 
-  onAuthStateChanged(auth, (user) => {
-    const loginScreen = document.getElementById('login-screen');
-    if (user) {
-      console.log("Usuario autenticado:", user.email);
-      if (loginScreen) loginScreen.classList.add('hidden');
-      const userBox = document.getElementById('user-info-box');
-      if (userBox) userBox.innerHTML = `<p style="color:var(--green)">✓ ${user.email}</p>`;
-      
-      // Cargar datos iniciales
-      if (typeof inicializarMesSelector === 'function') inicializarMesSelector();
-      if (typeof actualizarDashboard === 'function') actualizarDashboard();
-      if (typeof cargarIngresos === 'function') cargarIngresos();
-      if (typeof cargarGastosFijos === 'function') cargarGastosFijos();
-      if (typeof cargarCategoriasVariables === 'function') cargarCategoriasVariables();
-      if (typeof cargarGastosVariables === 'function') cargarGastosVariables();
-      if (typeof cargarConfiguracionAhorro === 'function') cargarConfiguracionAhorro();
-    } else {
-      console.log("No hay sesión activa.");
-      if (loginScreen) loginScreen.classList.remove('hidden');
+  // Modifica tu onAuthStateChanged actual para validar el correo:
+onAuthStateChanged(auth, async (user) => {
+  const loginScreen = document.getElementById('login-screen');
+  
+  if (user) {
+    const emailUser = user.email;
+    console.log("Validando acceso para:", emailUser);
+
+    try {
+      // 1. Consultar si el correo está autorizado en Firestore
+      // (Puedes crear un documento en tu Firestore: colección 'configuracion', documento 'acceso', con un campo 'correosPermitidos' [array])
+      const docRef = window.doc(window.db, 'configuracion', 'acceso');
+      const docSnap = await window.getDoc(docRef);
+
+      let emailsPermitidos = ['tu-correo-principal@gmail.com']; // Pon tu correo por defecto aquí
+      if (docSnap.exists() && docSnap.data().correosPermitidos) {
+        emailsPermitidos = docSnap.data().correosPermitidos;
+      }
+
+      // 2. Validar si el correo actual está en la lista blanca
+      if (emailsPermitidos.includes(emailUser)) {
+        console.log("Acceso autorizado");
+        if (loginScreen) loginScreen.classList.add('hidden');
+        
+        const userBox = document.getElementById('user-info-box');
+        if (userBox) userBox.innerHTML = `<p style="color:var(--green)">✓ ${emailUser}</p>`;
+        
+        // Cargar datos iniciales
+        if (typeof inicializarMesSelector === 'function') inicializarMesSelector();
+        if (typeof actualizarDashboard === 'function') actualizarDashboard();
+        if (typeof cargarIngresos === 'function') cargarIngresos();
+        if (typeof cargarGastosFijos === 'function') cargarGastosFijos();
+        if (typeof cargarCategoriasVariables === 'function') cargarCategoriasVariables();
+        if (typeof cargarGastosVariables === 'function') cargarGastosVariables();
+        if (typeof cargarConfiguracionAhorro === 'function') cargarConfiguracionAhorro();
+      } else {
+        // Si NO está autorizado, cerrar sesión y mostrar error
+        alert("Acceso denegado. Este sistema es privado y tu cuenta de Google no está autorizada.");
+        await window.signOut(window.auth);
+        if (loginScreen) loginScreen.classList.remove('hidden');
+      }
+
+    } catch (e) {
+      console.error("Error al validar autorización:", e);
+      // Por seguridad, si falla la lectura de la lista, cerramos sesión
+      await window.signOut(window.auth);
     }
-  });
+
+  } else {
+    console.log("No hay sesión activa.");
+    if (loginScreen) loginScreen.classList.remove('hidden');
+  }
+});
 </script>
 
 <style>
