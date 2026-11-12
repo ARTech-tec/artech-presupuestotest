@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Presupuesto Personal — AR Technology</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<!-- ── FIREBASE SDKs (Modulares) ── -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
+  import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAwUxIK6wRR-tCj4_PaYyGgvvsgK9R5lf4",
+    authDomain: "artech-presupuesto.firebaseapp.com",
+    projectId: "artech-presupuesto",
+    storageBucket: "artech-presupuesto.firebasestorage.app",
+    messagingSenderId: "473359056073",
+    appId: "1:473359056073:web:68f276802ab0dc78882118"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // Exponer herramientas globalmente
+  window.db = db;
+  window.auth = auth;
+  window.GoogleAuthProvider = GoogleAuthProvider;
+  window.signInWithPopup = signInWithPopup;
+  window.signOut = signOut;
+  window.collection = collection;
+  window.addDoc = addDoc;
+  window.getDocs = getDocs;
+  window.doc = doc;
+  window.deleteDoc = deleteDoc;
+  window.updateDoc = updateDoc;
+  window.serverTimestamp = serverTimestamp;
+  window.query = query;
+  window.where = where;
+
+onAuthStateChanged(auth, (user) => {
+  const loginScreen = document.getElementById('login-screen');
+  if (user) {
+    console.log("Usuario autenticado:", user.email);
+    // Ocultar pantalla de login
+    if (loginScreen) loginScreen.classList.add('hidden');
+    // Actualizar caja de usuario en el sidebar si existe
+    const userBox = document.getElementById('user-info-box');
+    if (userBox) userBox.innerHTML = `<p style="color:var(--green)">✓ ${user.email}</p>`;
+    
+    if (typeof cargarIngresos === 'function') cargarIngresos();
+	  if (typeof cargarGastosFijos === 'function') cargarGastosFijos();
+    if (typeof cargarCategoriasVariables === 'function') cargarCategoriasVariables();
+  } else {
+    console.log("No hay sesión activa.");
+    // Mostrar pantalla de login
+    if (loginScreen) loginScreen.classList.remove('hidden');
+  }
+  // Dentro de onAuthStateChanged:
+if (user) {
+  if (loginScreen) loginScreen.classList.add('hidden');
+  const userBox = document.getElementById('user-info-box');
+  if (userBox) userBox.innerHTML = `<p style="color:var(--green)">✓ ${user.email}</p>`;
+  
+  // Cargar datos iniciales
+  actualizarDashboard();
+  cargarIngresos();
+  cargarGastosFijos();
+  cargarCategoriasVariables();
+  cargarGastosVariables();
+  cargarConfiguracionAhorro();
+}
+});
+</script>
+
+<style>
+
+/* ── PANTALLA DE LOGIN BLOQUEANTE ── */
+#login-screen {
+  position: fixed; inset: 0; background: var(--bg);
+  z-index: 9999; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 20px;
+  transition: opacity 0.3s ease;
+}
+#login-screen.hidden { opacity: 0; pointer-events: none; }
+.login-card {
+  background: var(--card); border: 1px solid var(--border);
+  padding: 40px; border-radius: var(--radius); text-align: center;
+  box-shadow: var(--shadow); max-width: 400px; width: 90%;
+}
+
+/* ── VARIABLES ── */
+:root {
+  --bg:        #0d0d14;
+  --bg2:       #13131e;
+  --bg3:       #1c1c2e;
+  --card:      #1a1a2e;
+  --border:    rgba(255,255,255,0.07);
+  --accent:    #7c3aed;
+  --accent2:   #a855f7;
+  --green:     #10b981;
+  --red:       #ef4444;
+  --yellow:    #f59e0b;
+  --blue:      #3b82f6;
+  --txt:       #e8e8f0;
+  --txt2:      #9999b3;
+  --txt3:      #5a5a7a;
+  --q1:        #3b82f6;
+  --q2:        #f59e0b;
+  --radius:    14px;
+  --radius-sm: 8px;
+  --shadow:    0 4px 24px rgba(0,0,0,0.4);
+  --glow:      0 0 40px rgba(124,58,237,0.15);
+}
+.sv-green  { color: var(--green); }
+.sv-red    { color: var(--red); }
+.sv-yellow { color: var(--yellow); }
+.sv-blue   { color: var(--blue); }
+.sv-purple { color: var(--accent2); }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--txt);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+button { cursor: pointer; font-family: inherit; }
+input, select { font-family: inherit; }
+a { color: inherit; text-decoration: none; }
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 0; opacity: 0.4;
+}
+.sidebar {
+  position: fixed; left: 0; top: 0;
+  width: 240px; height: 100vh;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  z-index: 100; padding: 28px 16px;
+  transition: transform 0.3s ease;
+}
+.sidebar-logo {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 8px 28px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.sidebar-logo .logo-icon {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.sidebar-logo span {
+  font-family: 'DM Serif Display', serif;
+  font-size: 16px;
+  line-height: 1.2;
+  color: var(--txt);
+}
+.sidebar-logo small { color: var(--txt3); font-size: 11px; display: block; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  color: var(--txt2); font-size: 14px; font-weight: 500;
+  cursor: pointer; transition: all 0.2s; border: none; background: none;
+  width: 100%; text-align: left; margin-bottom: 2px;
+}
+.nav-item:hover { background: rgba(255,255,255,0.05); color: var(--txt); }
+.nav-item.active { background: rgba(124,58,237,0.15); color: var(--accent2); }
+.nav-item .icon { font-size: 18px; width: 22px; text-align: center; }
+.main {
+  margin-left: 240px;
+  padding: 32px;
+  min-height: 100vh;
+  position: relative; z-index: 1;
+}
+.section { display: none; animation: fadeIn .3s ease; }
+.section.active { display: block; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.section-header {
+  margin-bottom: 28px;
+  display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+}
+.section-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 28px; color: var(--txt);
+}
+.section-subtitle { color: var(--txt3); font-size: 14px; margin-top: 4px; }
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px; margin-bottom: 28px;
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  position: relative; overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--glow); }
+.stat-label { font-size: 12px; color: var(--txt3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+.stat-value { font-size: 26px; font-weight: 600; letter-spacing: -0.5px; }
+.stat-sub { font-size: 12px; color: var(--txt3); margin-top: 4px; }
+.chart-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px; margin-bottom: 28px;
+}
+.chart-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px;
+}
+.chart-title { font-size: 13px; font-weight: 600; color: var(--txt2); margin-bottom: 16px; text-transform: uppercase; letter-spacing: .06em; }
+.form-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 24px;
+  margin-bottom: 20px;
+}
+.form-card-title { font-size: 14px; font-weight: 600; color: var(--txt2); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px; align-items: end;
+}
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 12px; color: var(--txt3); font-weight: 500; letter-spacing: .04em; }
+.field input, .field select {
+  background: var(--bg3); border: 1px solid var(--border);
+  color: var(--txt); padding: 10px 12px; border-radius: var(--radius-sm);
+  font-size: 14px; outline: none; transition: border-color 0.2s;
+}
+.field input:focus, .field select:focus { border-color: var(--accent2); }
+option { background: var(--bg3); }
+.btn {
+  padding: 10px 18px; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 500; border: none;
+  transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #fff;
+}
+.btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-success { background: rgba(16,185,129,0.15); color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+.btn-danger  { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+.table-wrap {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; margin-bottom: 20px;
+}
+.table-header-bar {
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 13px; color: var(--txt2); font-weight: 600;
+}
+table { width: 100%; border-collapse: collapse; }
+th {
+  padding: 12px 16px; text-align: left;
+  font-size: 11px; color: var(--txt3);
+  text-transform: uppercase; letter-spacing: .08em;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+}
+td { padding: 13px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 14px; }
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+}
+.badge-paid { background: rgba(16,185,129,0.15); color: var(--green); }
+.prog-wrap {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px; margin-bottom: 20px;
+}
+.prog-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; }
+.prog-track { height: 10px; background: var(--bg3); border-radius: 5px; overflow: hidden; }
+.prog-fill  { height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--green), var(--yellow), var(--red)); }
+#toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 18px;
+  font-size: 14px; color: var(--txt); box-shadow: var(--shadow);
+  display: flex; align-items: center; gap: 8px; max-width: 320px;
+}
+.toast.success { border-left: 3px solid var(--green); }
+.toast.error   { border-left: 3px solid var(--red); }
+.hamburger { display: none; position: fixed; top: 16px; left: 16px; z-index: 200; background: var(--bg2); border: 1px solid var(--border); color: var(--txt); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 18px; }
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+.overlay.show { display: block; }
+@media (max-width: 768px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); }
+  .main { margin-left: 0; padding: 20px 16px; padding-top: 64px; }
+  .hamburger { display: block; }
+}
+.period-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 14px; border-radius: 20px;
+  font-size: 12px; font-weight: 700;
+}
+.pill-all { background: rgba(168,85,247,0.15); color: var(--accent2); border: 1px solid rgba(168,85,247,0.3); }
+.q-split { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+.q-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.q-card-title { font-size: 11px; text-transform: uppercase; margin-bottom: 12px; font-weight: 700; }
+.q-row { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.period-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+.period-btn { padding: 7px 2px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg3); color: var(--txt3); font-size: 11px; font-weight: 700; text-align: center; cursor: pointer; }
+.period-btn.active-all { background: rgba(168,85,247,0.2); border-color: var(--accent2); color: var(--accent2); }
+.sidebar-bottom { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px; }
+.sidebar-bottom label { font-size: 11px; color: var(--txt3); text-transform: uppercase; display: block; margin-bottom: 5px; }
+.sidebar-bottom select { width: 100%; background: var(--bg3); border: 1px solid var(--border); color: var(--txt); padding: 8px 10px; border-radius: var(--radius-sm); font-size: 13px; outline: none; }
+.qbtn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.qbtn { padding: 10px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg3); color: var(--txt2); font-size: 13px; font-weight: 600; cursor: pointer; }
+.qbtn.qsel-q1 { background: rgba(59,130,246,0.2); border-color: #3b82f6; color: #3b82f6; }
+.ahorro-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.ahorro-calc { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+.ahorro-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<!-- Pantalla de Login inicial -->
+<div id="login-screen">
+  <div class="login-card">
+    <div style="font-size: 40px; margin-bottom: 15px;">💰</div>
+    <h2 style="font-family: 'DM Serif Display', serif; font-size: 24px; margin-bottom: 8px;">Presupuesto Personal</h2>
+    <p style="color: var(--txt3); font-size: 13px; margin-bottom: 24px;">Inicia sesión con tu cuenta de Google para acceder a tus finanzas de forma segura.</p>
+    <button class="btn btn-primary" onclick="iniciarSesionGoogle()" style="width: 100%; justify-content: center; padding: 12px;">
+      🔑 Iniciar sesión con Google
+    </button>
+  </div>
+</div>
+
+<button class="hamburger" onclick="toggleSidebar()">☰</button>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">💰</div>
+    <div>
+      <span>Presupuesto<br>Personal</span>
+      <small>Control financiero</small>
+    </div>
+  </div>
+  <div style="padding: 0 8px 16px; font-size: 11px; color: var(--txt3);">
+      © 2026 AR Technology
+  </div>
+  <nav id="nav">
+    <button class="nav-item active" onclick="goTo('dashboard')" data-section="dashboard"><span class="icon">📊</span> Dashboard</button>
+    <button class="nav-item" onclick="goTo('ingresos')" data-section="ingresos"><span class="icon">💵</span> Ingresos</button>
+    <button class="nav-item" onclick="goTo('gastos-fijos')" data-section="gastos-fijos"><span class="icon">🏠</span> Gastos Fijos</button>
+    <button class="nav-item" onclick="goTo('gastos-variables')" data-section="gastos-variables"><span class="icon">🛒</span> Gastos Variables</button>
+    <button class="nav-item" onclick="goTo('ahorro')" data-section="ahorro"><span class="icon">🎯</span> Ahorro</button>
+    <button class="nav-item" onclick="goTo('historico')" data-section="historico"><span class="icon">📅</span> Histórico</button>
+  </nav>
+  <div class="sidebar-bottom">
+    <div id="user-info-box" style="font-size: 12px; color: var(--txt2); word-break: break-all;">
+      <button class="btn btn-primary btn-sm" style="width:100%; margin-bottom:8px;" onclick="iniciarSesionGoogle()">🔑 Iniciar Sesión</button>
+    </div>
+    <div>
+      <label>Mes activo</label>
+      <select id="mesSelector" onchange="cambiarMes(this.value)"></select>
+    </div>
+    <div>
+      <label>Periodo</label>
+      <div class="period-btns">
+        <button class="period-btn" id="pbtn-Q1" onclick="cambiarPeriodo('Q1')">1a Q</button>
+        <button class="period-btn" id="pbtn-Q2" onclick="cambiarPeriodo('Q2')">2a Q</button>
+        <button class="period-btn active-all" id="pbtn-TODOS" onclick="cambiarPeriodo('TODOS')">Todo</button>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- DASHBOARD -->
+  <div id="sec-dashboard" class="section active">
+    <div class="section-header">
+      <div>
+        <h1 class="section-title">Dashboard</h1>
+        <p class="section-subtitle" id="dash-subtitle">Inicia sesión para ver tus datos</p>
+      </div>
+      <span id="dash-period-pill" class="period-pill pill-all">📆 Mes Completo</span>
+    </div>
+  </div>
+
+  <!-- INGRESOS -->
+  <div id="sec-ingresos" class="section">
+    <div class="section-header">
+      <div><h1 class="section-title">Ingresos</h1><p class="section-subtitle">Registra tus fuentes de ingreso</p></div>
+    </div>
+    <div class="form-card">
+      <div class="form-card-title">➕ Nuevo Ingreso</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Descripción / Fuente</label>
+          <input type="text" id="ing-desc" placeholder="Ej: Salario mensual">
+        </div>
+        <div class="field">
+          <label>Monto</label>
+          <input type="number" id="ing-monto" placeholder="0.00" min="0" step="0.01">
+        </div>
+        <div class="field">
+          <label>Mes</label>
+          <input type="month" id="ing-mes">
+        </div>
+        <div class="field">
+          <label>Quincena de pago</label>
+          <div class="qbtn-group">
+            <button class="qbtn qsel-q1" id="ing-q1-btn" onclick="selQForm('ing','Q1')">🔵 1a Quincena</button>
+            <button class="qbtn" id="ing-q2-btn" onclick="selQForm('ing','Q2')">🟡 2a Quincena</button>
+          </div>
+          <input type="hidden" id="ing-periodo" value="Q1">
+        </div>
+        <div class="field" style="justify-content:flex-end">
+          <button class="btn btn-primary" onclick="guardarIngreso()">Guardar ingreso</button>
+        </div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header-bar">
+        <span>Ingresos del mes</span>
+        <span id="ing-total-label" style="color:var(--green);font-size:15px">Total: $0.00</span>
+      </div>
+      <table>
+        <thead><tr><th>Descripción</th><th>Monto</th><th>Fecha registro</th><th>Acciones</th></tr></thead>
+        <tbody id="ing-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- GASTOS FIJOS -->
+  <div id="sec-gastos-fijos" class="section">
+    <div class="section-header">
+      <div><h1 class="section-title">Gastos Fijos</h1><p class="section-subtitle">Renta, servicios, préstamos</p></div>
+    </div>
+  </div>
+
+  <!-- GASTOS VARIABLES -->
+  <div id="sec-gastos-variables" class="section">
+    <div class="section-header">
+      <div><h1 class="section-title">Gastos Variables</h1><p class="section-subtitle">Gastos del día a día</p></div>
+    </div>
+  </div>
+
+  <!-- AHORRO -->
+  <div id="sec-ahorro" class="section">
+    <div class="section-header">
+      <div><h1 class="section-title">Ahorro</h1><p class="section-subtitle">Configuración de metas</p></div>
+    </div>
+  </div>
+
+  <!-- HISTÓRICO -->
+  <div id="sec-historico" class="section">
+    <div class="section-header">
+      <div><h1 class="section-title">Histórico</h1><p class="section-subtitle">Evolución mensual</p></div>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast-container"></div>
+
+<script>
+let mesActual = new Date().toISOString().slice(0, 7);
+let periodoActual = 'TODOS';
+
+const categoriasVariables = [
+  "Supermercado",
+  "Alimentos / Comida fuera",
+  "Transporte / Gasolina",
+  "Entretenimiento",
+  "Salud / Cuidado personal",
+  "Hogar / Servicios",
+  "Otros"
+];
+
+// Función para inicializar las categorías en el selector <select id="gv-cat">
+function cargarCategoriasVariables() {
+  const select = document.getElementById('gv-cat');
+  if (!select) return;
+  
+  let options = '';
+  categoriasVariables.forEach(cat => {
+    options += `<option value="${cat}">${cat}</option>`;
+  });
+  select.innerHTML = options;
+}
+
+function toast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${type === 'success' ? '✓' : '✕'}</span> ${msg}`;
+  const container = document.getElementById('toast-container');
+  if (container) {
+    container.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+}
+
+function goTo(section) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const secEl = document.getElementById('sec-' + section);
+  const navEl = document.querySelector(`[data-section="${section}"]`);
+  if (secEl) secEl.classList.add('active');
+  if (navEl) navEl.classList.add('active');
+  closeSidebar();
+  if(section === 'ingresos') cargarIngresos();
+  if (section === 'gastos-fijos') cargarGastosFijos(); // Add this line
+  if (section === 'gastos-variables') {
+  cargarCategoriasVariables();
+  cargarGastosVariables();
+  if (section === 'dashboard') actualizarDashboard();
+  if (section === 'ingresos') cargarIngresos();
+  if (section === 'gastos-fijos') cargarGastosFijos();
+  if (section === 'gastos-variables') { cargarCategoriasVariables(); cargarGastosVariables(); }
+  if (section === 'ahorro') cargarConfiguracionAhorro();
+}
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+function cambiarMes(val) { mesActual = val; }
+function cambiarPeriodo(val) { periodoActual = val; }
+function selQForm(form, per) {
+  document.getElementById(form + '-periodo').value = per;
+  document.getElementById(form + '-q1-btn').className = 'qbtn' + (per === 'Q1' ? ' qsel-q1' : '');
+  document.getElementById(form + '-q2-btn').className = 'qbtn' + (per === 'Q2' ? ' qsel-q1' : '');
+}
+
+// ── AUTENTICACIÓN Y FIRESTORE ──
+function iniciarSesionGoogle() {
+  const provider = new window.GoogleAuthProvider();
+  window.signInWithPopup(window.auth, provider)
+    .then((result) => {
+      toast('¡Bienvenido, ' + result.user.displayName + '!');
+      document.getElementById('user-info-box').innerHTML = `<p style="color:var(--green)">Sesión: ${result.user.email}</p>`;
+      cargarIngresos();
+    })
+    .catch((error) => {
+      console.error(error);
+      toast('Error al iniciar sesión', 'error');
+    });
+}
+
+async function guardarIngreso() {
+  const user = window.auth.currentUser;
+  if (!user) {
+    toast('Por favor inicia sesión con Google primero', 'error');
+    return;
+  }
+  const desc = document.getElementById('ing-desc').value.trim();
+  const monto = document.getElementById('ing-monto').value;
+  if (!desc || !monto) { toast('Completa descripción y monto', 'error'); return; }
+
+  const mesVal = document.getElementById('ing-mes').value || mesActual;
+  const periodo = document.getElementById('ing-periodo').value || 'Q1';
+
+  try {
+    const ref = window.collection(window.db, 'users', user.uid, 'ingresos');
+    await window.addDoc(ref, {
+      Descripcion: desc,
+      Monto: Number(monto),
+      Mes: mesVal,
+      Periodo: periodo,
+      FechaRegistro: new Date().toISOString().split('T')[0]
+    });
+    toast('✓ Ingreso guardado en la nube');
+    document.getElementById('ing-desc').value = '';
+    document.getElementById('ing-monto').value = '';
+    cargarIngresos();
+  } catch(e) {
+    console.error(e);
+    toast('Error al guardar en base de datos', 'error');
+  }
+}
+
+async function cargarIngresos() {
+  const user = window.auth.currentUser;
+  const tbody = document.getElementById('ing-tbody');
+  if (!tbody || !user) return;
+
+  try {
+    const ref = window.collection(window.db, 'users', user.uid, 'ingresos');
+    const snap = await window.getDocs(ref);
+    let html = '', total = 0;
+
+    snap.forEach(docSnap => {
+      const r = docSnap.data();
+      const id = docSnap.id;
+      total += Number(r.Monto || 0);
+      html += `<tr>
+        <td>${r.Descripcion}</td>
+        <td><strong class="sv-green">$${Number(r.Monto).toFixed(2)}</strong></td>
+        <td style="color:var(--txt3)">${r.FechaRegistro || ''}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="eliminarIngreso('${id}')">✕</button></td>
+      </tr>`;
+    });
+
+    tbody.innerHTML = html || '<tr><td colspan="4" style="text-align:center; color:var(--txt3)">Sin ingresos registrados</td></tr>';
+    document.getElementById('ing-total-label').textContent = `Total: $${total.toFixed(2)}`;
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+async function eliminarIngreso(id) {
+  const user = window.auth.currentUser;
+  if (!user || !confirm('¿Eliminar este ingreso?')) return;
+  try {
+    const docRef = window.doc(window.db, 'users', user.uid, 'ingresos', id);
+    await window.deleteDoc(docRef);
+    toast('Ingreso eliminado');
+    cargarIngresos();
+  } catch(e) {
+    toast('Error al eliminar', 'error');
+  }
+}
+// ── GASTOS FIJOS CON FIRESTORE ──
+
+async function guardarGastoFijo() {
+  const user = window.auth.currentUser;
+  if (!user) {
+    toast('Por favor inicia sesión con Google primero', 'error');
+    return;
+  }
+
+  const nombre = document.getElementById('gf-nombre').value.trim();
+  const monto  = document.getElementById('gf-monto').value;
+  if (!nombre || !monto) { toast('Completa el nombre y el monto', 'error'); return; }
+
+  const vencimiento = document.getElementById('gf-vencimiento').value || '';
+  const mesVal      = document.getElementById('gf-mes').value || mesActual;
+  const periodo     = document.getElementById('gf-periodo').value || 'Q2';
+
+  try {
+    const ref = window.collection(window.db, 'users', user.uid, 'gastosFijos');
+    await window.addDoc(ref, {
+      Nombre: nombre,
+      Monto: Number(monto),
+      Vencimiento: vencimiento,
+      Mes: mesVal,
+      Periodo: periodo,
+      Pagado: false, // Estado inicial
+      FechaRegistro: new Date().toISOString().split('T')[0]
+    });
+
+    toast('✓ Gasto fijo guardado');
+    document.getElementById('gf-nombre').value = '';
+    document.getElementById('gf-monto').value = '';
+    document.getElementById('gf-vencimiento').value = '';
+    cargarGastosFijos();
+  } catch (e) {
+    console.error(e);
+    toast('Error al guardar gasto fijo', 'error');
+  }
+}
+
+async function cargarGastosFijos() {
+  const user = window.auth.currentUser;
+  const tbody = document.getElementById('gf-tbody');
+  if (!tbody || !user) return;
+
+  try {
+    const ref = window.collection(window.db, 'users', user.uid, 'gastosFijos');
+    const snap = await window.getDocs(ref);
+    let html = '', total = 0;
+
+    snap.forEach(docSnap => {
+      const r = docSnap.data();
+      const id = docSnap.id;
+      total += Number(r.Monto || 0);
+
+      const estaPagado = r.Pagado === true;
+      const btnEstado = estaPagado 
+        ? `<button class="btn btn-sm btn-success" onclick="toggleEstadoGastoFijo('${id}', false)">✓ Pagado</button>`
+        : `<button class="btn btn-sm" style="background:var(--bg3); color:var(--txt2); border:1px solid var(--border)" onclick="toggleEstadoGastoFijo('${id}', true)">⏳ Pendiente</button>`;
+
+      html += `<tr>
+        <td>${r.Nombre}</td>
+        <td><strong class="sv-red">$${Number(r.Monto).toFixed(2)}</strong></td>
+        <td style="color:var(--txt3)">${r.Vencimiento || '—'}</td>
+        <td>${btnEstado}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="eliminarGastoFijo('${id}')">✕</button></td>
+      </tr>`;
+    });
+
+    tbody.innerHTML = html || '<tr><td colspan="5" style="text-align:center; color:var(--txt3)">Sin gastos fijos registrados</td></tr>';
+    const totalLabel = document.getElementById('gf-total-label');
+    if (totalLabel) totalLabel.textContent = `Total: $${total.toFixed(2)}`;
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function toggleEstadoGastoFijo(id, nuevoEstado) {
+  const user = window.auth.currentUser;
+  if (!user) return;
+
+  try {
+    const docRef = window.doc(window.db, 'users', user.uid, 'gastosFijos', id);
+    await window.updateDoc(docRef, { Pagado: nuevoEstado });
+    toast(nuevoEstado ? 'Gasto marcado como pagado' : 'Gasto marcado como pendiente');
+    cargarGastosFijos();
+  } catch (e) {
+    console.error(e);
+    toast('Error al actualizar estado', 'error');
+  }
+}
+
+async function eliminarGastoFijo(id) {
+  const user = window.auth.currentUser;
+  if (!user || !confirm('¿Eliminar este gasto fijo?')) return;
+
+  try {
+    const docRef = window.doc(window.db, 'users', user.uid, 'gastosFijos', id);
+    await window.deleteDoc(docRef);
+    toast('Gasto fijo eliminado');
+    cargarGastosFijos();
+  } catch (e) {
+    toast('Error al eliminar', 'error');
+  }
+}
+
+// ── GASTOS VARIABLES CON FIRESTORE ──
+
+async function guardarGastoVariable() {
+  const user = window.auth.currentUser;
+  if (!user) {
+    toast('Por favor inicia sesión con Google primero', 'error');
+    return;
+  }
+
+  const desc  = document.getElementById('gv-desc').value.trim();
+  const cat   = document.getElementById('gv-cat').value;
+  const monto = document.getElementById('gv-monto').value;
+  
+  if (!desc || !monto) {
+    toast('Completa la descripción y el monto', 'error');
+    return;
+  }
+
+  const fecha   = document.getElementById('gv-fecha').value || new Date().toISOString().split('T')[0];
+  const mesVal  = document.getElementById('gv-mes').value || mesActual;
+  const periodo = document.getElementById('gv-periodo').value || 'Q2';
+
+  try {
+    const ref = window.collection(window.db, 'users', user.uid, 'gastosVariables');
+    await window.addDoc(ref, {
+      Descripcion: desc,
+      Categoria: cat,
+      Monto: Number(monto),
+      Fecha: fecha,
+      Mes: mesVal,
+      Periodo: periodo,
+      FechaRegistro: new Date().toISOString().split('T')[0]
+    });
+
+    toast('✓ Gasto variable guardado');
+    document.getElementById('gv-desc').value = '';
+    document.getElementById('gv-monto').value = '';
+    document.getElementById('gv-fecha').value = '';
+    cargarGastosVariables();
+  } catch (e) {
+    console.error(e);
+    toast('Error al guardar gasto variable', 'error');
+  }
+}
+
+async function cargarGastosVariables() {
+  const user = window.auth.currentUser;
+  const tbody = document.getElementById('gv-tbody');
+  if (!tbody || !user) return;
+
+  try {
+    const ref = window.collection(window.db, 'users', user.uid, 'gastosVariables');
+    const snap = await window.getDocs(ref);
+    let html = '', total = 0;
+
+    snap.forEach(docSnap => {
+      const r = docSnap.data();
+      const id = docSnap.id;
+      total += Number(r.Monto || 0);
+
+      html += `<tr>
+        <td>${r.Descripcion}</td>
+        <td><span class="badge" style="background:rgba(168,85,247,0.15); color:var(--accent2);">${r.Categoria || 'General'}</span></td>
+        <td><strong class="sv-yellow">$${Number(r.Monto).toFixed(2)}</strong></td>
+        <td style="color:var(--txt3)">${r.Fecha || '—'}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="eliminarGastoVariable('${id}')">✕</button></td>
+      </tr>`;
+    });
+
+    tbody.innerHTML = html || '<tr><td colspan="5" style="text-align:center; color:var(--txt3)">Sin gastos variables registrados</td></tr>';
+    const totalLabel = document.getElementById('gv-total-label');
+    if (totalLabel) totalLabel.textContent = `Total: $${total.toFixed(2)}`;
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function eliminarGastoVariable(id) {
+  const user = window.auth.currentUser;
+  if (!user || !confirm('¿Eliminar este gasto variable?')) return;
+
+  try {
+    const docRef = window.doc(window.db, 'users', user.uid, 'gastosVariables', id);
+    await window.deleteDoc(docRef);
+    toast('Gasto variable eliminado');
+    cargarGastosVariables();
+  } catch (e) {
+    toast('Error al eliminar', 'error');
+  }
+}
+
+// ── CONFIGURACIÓN DE AHORRO CON FIRESTORE ──
+
+async function guardarAhorro() {
+  const user = window.auth.currentUser;
+  if (!user) {
+    toast('Por favor inicia sesión con Google primero', 'error');
+    return;
+  }
+
+  const pctInput = document.getElementById('ahorro-pct-input').value;
+  const mesVal = document.getElementById('ahorro-mes').value || mesActual;
+
+  if (pctInput === '' || isNaN(pctInput)) {
+    toast('Ingresa un porcentaje válido', 'error');
+    return;
+  }
+
+  try {
+    // Usamos el mes como ID del documento para que cada mes tenga su propia configuración de ahorro
+    const docRef = window.doc(window.db, 'users', user.uid, 'configuracionAhorro', mesVal);
+    await window.setDoc(docRef, {
+      PorcentajeAhorro: Number(pctInput),
+      Mes: mesVal,
+      FechaActualizacion: new Date().toISOString().split('T')[0]
+    }, { merge: true });
+
+    toast('✓ Configuración de ahorro guardada');
+    calcularResumenAhorro();
+  } catch (e) {
+    console.error(e);
+    toast('Error al guardar ahorro', 'error');
+  }
+}
+
+async function cargarConfiguracionAhorro() {
+  const user = window.auth.currentUser;
+  if (!user) return;
+
+  const mesVal = document.getElementById('ahorro-mes')?.value || mesActual;
+
+  try {
+    const docRef = window.doc(window.db, 'users', user.uid, 'configuracionAhorro', mesVal);
+    const snap = await window.getDoc(docRef);
+
+    if (snap.exists()) {
+      const data = snap.data();
+      const pct = data.PorcentajeAhorro || 20;
+      const input = document.getElementById('ahorro-pct-input');
+      const slider = document.getElementById('ahorro-slider');
+      if (input) input.value = pct;
+      if (slider) slider.value = pct;
+      const lblPct = document.getElementById('ah-pct');
+      if (lblPct) lblPct.textContent = pct + '%';
+    }
+    calcularResumenAhorro();
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+// Funciones para sincronizar el slider y el input visualmente
+function sincronizarDesdeInput(val) {
+  const slider = document.getElementById('ahorro-slider');
+  if (slider) slider.value = val;
+  const lbl = document.getElementById('ah-pct');
+  if (lbl) lbl.textContent = val + '%';
+}
+
+function sincronizarDesdeSlider(val) {
+  const input = document.getElementById('ahorro-pct-input');
+  if (input) input.value = val;
+  const lbl = document.getElementById('ah-pct');
+  if (lbl) lbl.textContent = val + '%';
+}
+
+async function actualizarDashboard() {
+  const user = window.auth.currentUser;
+  if (!user) return;
+
+  try {
+    // 1. Obtener Ingresos
+    const ingSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'ingresos'));
+    let totalIngresos = 0;
+    ingSnap.forEach(doc => { totalIngresos += Number(doc.data().Monto || 0); });
+
+    // 2. Obtener Gastos Fijos
+    const gfSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'gastosFijos'));
+    let totalGastosFijos = 0;
+    let totalPagadoFijos = 0;
+    gfSnap.forEach(doc => {
+      const data = doc.data();
+      const monto = Number(data.Monto || 0);
+      totalGastosFijos += monto;
+      if (data.Pagado) totalPagadoFijos += monto;
+    });
+
+    // 3. Obtener Gastos Variables
+    const gvSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'gastosVariables'));
+    let totalGastosVariables = 0;
+    gvSnap.forEach(doc => { totalGastosVariables += Number(doc.data().Monto || 0); });
+
+    const gastosTotales = totalGastosFijos + totalGastosVariables;
+    const saldoDisponible = totalIngresos - gastosTotales;
+
+    // Actualizar elementos visuales del Dashboard si existen
+    const dashSub = document.getElementById('dash-subtitle');
+    if (dashSub) dashSub.textContent = `Resumen general de tu cuenta`;
+
+    const lblIng = document.getElementById('d-ingresos');
+    if (lblIng) lblIng.textContent = `$${totalIngresos.toFixed(2)}`;
+
+    const lblGastos = document.getElementById('d-gastos');
+    if (lblGastos) lblGastos.textContent = `$${gastosTotales.toFixed(2)}`;
+
+    const lblPagado = document.getElementById('d-pagado');
+    if (lblPagado) lblPagado.textContent = `$${totalPagadoFijos.toFixed(2)}`;
+
+    const lblSaldo = document.getElementById('d-saldo');
+    if (lblSaldo) lblSaldo.textContent = `$${saldoDisponible.toFixed(2)}`;
+
+  } catch (e) {
+    console.error("Error al actualizar dashboard:", e);
+  }
+}
+
+// Función auxiliar para calcular el resumen de la pestaña de ahorro
+async function calcularResumenAhorro() {
+  const user = window.auth.currentUser;
+  if (!user) return;
+
+  try {
+    const ingSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'ingresos'));
+    let totalIng = 0;
+    ingSnap.forEach(doc => { totalIng += Number(doc.data().Monto || 0); });
+
+    const gfSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'gastosFijos'));
+    let totalGastos = 0;
+    gfSnap.forEach(doc => { totalGastos += Number(doc.data().Monto || 0); });
+
+    const gvSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'gastosVariables'));
+    gvSnap.forEach(doc => { totalGastos += Number(doc.data().Monto || 0); });
+
+    const pct = Number(document.getElementById('ahorro-pct-input')?.value || 20);
+    const montoAhorro = (totalIng * pct) / 100;
+    const saldoFinal = totalIng - totalGastos - montoAhorro;
+
+    if (document.getElementById('ah-ingresos')) document.getElementById('ah-ingresos').textContent = `$${totalIng.toFixed(2)}`;
+    if (document.getElementById('ah-monto')) document.getElementById('ah-monto').textContent = `$${montoAhorro.toFixed(2)}`;
+    if (document.getElementById('ah-gastos')) document.getElementById('ah-gastos').textContent = `$${totalGastos.toFixed(2)}`;
+    if (document.getElementById('ah-saldo')) document.getElementById('ah-saldo').textContent = `$${saldoFinal.toFixed(2)}`;
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+</script>
+</body>
+</html>
