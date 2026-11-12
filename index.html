@@ -482,6 +482,51 @@ td { padding: 13px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); font-s
       <div class="bar-chart" id="bar-estado" style="padding:10px; color:var(--txt3); font-size:13px;">Control de compromisos financieros</div>
     </div>
   </div>
+
+<!-- INGRESOS -->
+  <div id="sec-ingresos" class="section">
+    <div class="section-header">
+      <div><h1 class="section-title">Ingresos</h1><p class="section-subtitle">Registra tus fuentes de ingreso</p></div>
+    </div>
+    <div class="form-card">
+      <div class="form-card-title">➕ Nuevo Ingreso</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Descripción / Fuente</label>
+          <input type="text" id="ing-desc" placeholder="Ej: Salario mensual">
+        </div>
+        <div class="field">
+          <label>Monto</label>
+          <input type="number" id="ing-monto" placeholder="0.00" min="0" step="0.01">
+        </div>
+        <div class="field">
+          <label>Mes</label>
+          <input type="month" id="ing-mes">
+        </div>
+        <div class="field">
+          <label>Quincena de pago</label>
+          <div class="qbtn-group">
+            <button class="qbtn qsel-q1" id="ing-q1-btn" onclick="selQForm('ing','Q1')">🔵 1a Quincena</button>
+            <button class="qbtn" id="ing-q2-btn" onclick="selQForm('ing','Q2')">🟡 2a Quincena</button>
+          </div>
+          <input type="hidden" id="ing-periodo" value="Q1">
+        </div>
+        <div class="field" style="justify-content:flex-end">
+          <button class="btn btn-primary" onclick="guardarIngreso()">Guardar ingreso</button>
+        </div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header-bar">
+        <span>Ingresos del mes</span>
+        <span id="ing-total-label" style="color:var(--green);font-size:15px">Total: $0.00</span>
+      </div>
+      <table>
+        <thead><tr><th>Descripción</th><th>Monto</th><th>Fecha registro</th><th>Acciones</th></tr></thead>
+        <tbody id="ing-tbody"></tbody>
+      </table>
+    </div>
+  </div>
 	
   <!-- GASTOS FIJOS -->
   <div id="sec-gastos-fijos" class="section">
