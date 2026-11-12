@@ -392,7 +392,7 @@ td { padding: 13px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); font-s
 <!-- MAIN -->
 <main class="main">
 
-  <!-- DASHBOARD -->
+  <!-- ── DASHBOARD ── -->
   <div id="sec-dashboard" class="section active">
     <div class="section-header">
       <div>
@@ -401,73 +401,58 @@ td { padding: 13px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); font-s
       </div>
       <span id="dash-period-pill" class="period-pill pill-all">📆 Mes Completo</span>
     </div>
-    
-    <!-- Tarjetas de resumen -->
+    <div class="q-split">
+      <div class="q-card q1">
+        <div class="q-card-title">🔵 Primera Quincena (1–15)</div>
+        <div class="q-row"><span>Ingresos</span>       <strong class="sv-green"  id="qq1-ing">—</strong></div>
+        <div class="q-row"><span>Gastos Fijos</span>   <strong class="sv-red"    id="qq1-gf">—</strong></div>
+        <div class="q-row"><span>Gastos Variables</span><strong class="sv-yellow" id="qq1-gv">—</strong></div>
+        <div class="q-row"><span>Pagado</span>         <strong class="sv-green"  id="qq1-pagado">—</strong></div>
+      </div>
+      <div class="q-card q2">
+        <div class="q-card-title">🟡 Segunda Quincena (16–fin)</div>
+        <div class="q-row"><span>Ingresos</span>       <strong class="sv-green"  id="qq2-ing">—</strong></div>
+        <div class="q-row"><span>Gastos Fijos</span>   <strong class="sv-red"    id="qq2-gf">—</strong></div>
+        <div class="q-row"><span>Gastos Variables</span><strong class="sv-yellow" id="qq2-gv">—</strong></div>
+        <div class="q-row"><span>Pagado</span>         <strong class="sv-green"  id="qq2-pagado">—</strong></div>
+      </div>
+    </div>
     <div class="stats-grid" id="stats-grid">
-      <div class="stat-card">
-        <div class="stat-label">Ingresos</div>
-        <div class="stat-value sv-green" id="d-ingresos">$0.00</div>
+      <div class="stat-card green">  <div class="stat-label">Ingresos</div>        <div class="stat-value green"  id="d-ingresos">—</div>  <div class="stat-sub" id="d-ingresos-sub">—</div></div>
+      <div class="stat-card red">    <div class="stat-label">Gastos Totales</div>  <div class="stat-value red"    id="d-gastos">—</div>    <div class="stat-sub" id="d-gastos-sub">Fijos + Variables</div></div>
+      <div class="stat-card yellow"> <div class="stat-label">Pagado</div>          <div class="stat-value yellow" id="d-pagado">—</div>    <div class="stat-sub" id="d-pagado-sub">Este mes</div></div>
+      <div class="stat-card blue">   <div class="stat-label">Pendiente</div>       <div class="stat-value blue"   id="d-pendiente">—</div> <div class="stat-sub">Por cubrir</div></div>
+      <div class="stat-card purple"> <div class="stat-label">Ahorro</div>          <div class="stat-value purple" id="d-ahorro">—</div>    <div class="stat-sub" id="d-ahorro-sub">—</div></div>
+      <div class="stat-card green">  <div class="stat-label">Saldo Disponible</div><div class="stat-value green"  id="d-saldo">—</div>    <div class="stat-sub">Libre al mes</div></div>
+    </div>
+    <div class="prog-wrap">
+      <div class="prog-label">
+        <span>Uso del presupuesto (Gastos / Ingresos)</span>
+        <span id="prog-pct">—%</span>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Gastos Totales</div>
-        <div class="stat-value sv-red" id="d-gastos">$0.00</div>
+      <div class="prog-track"><div class="prog-fill" id="prog-bar" style="width:0%"></div></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card">
+        <div class="chart-title">Gastos Variables por Categoría</div>
+        <div class="donut-wrap" id="donut-wrap">
+          <svg class="donut-svg" viewBox="0 0 120 120" width="120" height="120" id="donut-svg">
+            <circle cx="60" cy="60" r="48" fill="none" stroke="#1c1c2e" stroke-width="20"/>
+          </svg>
+          <div class="donut-legend" id="donut-legend"><span style="color:var(--txt3);font-size:13px">Sin datos</span></div>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Pagado</div>
-        <div class="stat-value sv-yellow" id="d-pagado">$0.00</div>
+      <div class="chart-card">
+        <div class="chart-title">Ingresos vs Gastos</div>
+        <div class="bar-chart" id="bar-main"></div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Saldo Disponible</div>
-        <div class="stat-value sv-green" id="d-saldo">$0.00</div>
-      </div>
+    </div>
+    <div class="chart-card" style="margin-bottom:20px">
+      <div class="chart-title">Estado de Pagos</div>
+      <div class="bar-chart" id="bar-estado"></div>
     </div>
   </div>
-
-  <!-- INGRESOS -->
-  <div id="sec-ingresos" class="section">
-    <div class="section-header">
-      <div><h1 class="section-title">Ingresos</h1><p class="section-subtitle">Registra tus fuentes de ingreso</p></div>
-    </div>
-    <div class="form-card">
-      <div class="form-card-title">➕ Nuevo Ingreso</div>
-      <div class="form-grid">
-        <div class="field">
-          <label>Descripción / Fuente</label>
-          <input type="text" id="ing-desc" placeholder="Ej: Salario mensual">
-        </div>
-        <div class="field">
-          <label>Monto</label>
-          <input type="number" id="ing-monto" placeholder="0.00" min="0" step="0.01">
-        </div>
-        <div class="field">
-          <label>Mes</label>
-          <input type="month" id="ing-mes">
-        </div>
-        <div class="field">
-          <label>Quincena de pago</label>
-          <div class="qbtn-group">
-            <button class="qbtn qsel-q1" id="ing-q1-btn" onclick="selQForm('ing','Q1')">🔵 1a Quincena</button>
-            <button class="qbtn" id="ing-q2-btn" onclick="selQForm('ing','Q2')">🟡 2a Quincena</button>
-          </div>
-          <input type="hidden" id="ing-periodo" value="Q1">
-        </div>
-        <div class="field" style="justify-content:flex-end">
-          <button class="btn btn-primary" onclick="guardarIngreso()">Guardar ingreso</button>
-        </div>
-      </div>
-    </div>
-    <div class="table-wrap">
-      <div class="table-header-bar">
-        <span>Ingresos del mes</span>
-        <span id="ing-total-label" style="color:var(--green);font-size:15px">Total: $0.00</span>
-      </div>
-      <table>
-        <thead><tr><th>Descripción</th><th>Monto</th><th>Fecha registro</th><th>Acciones</th></tr></thead>
-        <tbody id="ing-tbody"></tbody>
-      </table>
-    </div>
-  </div>
-
+	
   <!-- GASTOS FIJOS -->
   <div id="sec-gastos-fijos" class="section">
     <div class="section-header">
