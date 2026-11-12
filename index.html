@@ -392,64 +392,94 @@ td { padding: 13px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); font-s
 <!-- MAIN -->
 <main class="main">
 
-  <!-- ── DASHBOARD ── -->
+ <!-- DASHBOARD -->
   <div id="sec-dashboard" class="section active">
     <div class="section-header">
       <div>
         <h1 class="section-title">Dashboard</h1>
-        <p class="section-subtitle" id="dash-subtitle">Cargando...</p>
+        <p class="section-subtitle" id="dash-subtitle">Resumen general de tu cuenta</p>
       </div>
       <span id="dash-period-pill" class="period-pill pill-all">📆 Mes Completo</span>
     </div>
+
+    <!-- Desglose de Quincenas -->
     <div class="q-split">
       <div class="q-card q1">
-        <div class="q-card-title">🔵 Primera Quincena (1–15)</div>
-        <div class="q-row"><span>Ingresos</span>       <strong class="sv-green"  id="qq1-ing">—</strong></div>
-        <div class="q-row"><span>Gastos Fijos</span>   <strong class="sv-red"    id="qq1-gf">—</strong></div>
+        <div class="q-card-title" style="color:var(--blue)">🔵 Primera Quincena (1–15)</div>
+        <div class="q-row"><span>Ingresos</span><strong class="sv-green" id="qq1-ing">—</strong></div>
+        <div class="q-row"><span>Gastos Fijos</span><strong class="sv-red" id="qq1-gf">—</strong></div>
         <div class="q-row"><span>Gastos Variables</span><strong class="sv-yellow" id="qq1-gv">—</strong></div>
-        <div class="q-row"><span>Pagado</span>         <strong class="sv-green"  id="qq1-pagado">—</strong></div>
+        <div class="q-row"><span>Pagado</span><strong class="sv-green" id="qq1-pagado">—</strong></div>
       </div>
       <div class="q-card q2">
-        <div class="q-card-title">🟡 Segunda Quincena (16–fin)</div>
-        <div class="q-row"><span>Ingresos</span>       <strong class="sv-green"  id="qq2-ing">—</strong></div>
-        <div class="q-row"><span>Gastos Fijos</span>   <strong class="sv-red"    id="qq2-gf">—</strong></div>
+        <div class="q-card-title" style="color:var(--yellow)">🟡 Segunda Quincena (16–fin)</div>
+        <div class="q-row"><span>Ingresos</span><strong class="sv-green" id="qq2-ing">—</strong></div>
+        <div class="q-row"><span>Gastos Fijos</span><strong class="sv-red" id="qq2-gf">—</strong></div>
         <div class="q-row"><span>Gastos Variables</span><strong class="sv-yellow" id="qq2-gv">—</strong></div>
-        <div class="q-row"><span>Pagado</span>         <strong class="sv-green"  id="qq2-pagado">—</strong></div>
+        <div class="q-row"><span>Pagado</span><strong class="sv-green" id="qq2-pagado">—</strong></div>
       </div>
     </div>
+
+    <!-- 6 Tarjetas de Estadísticas -->
     <div class="stats-grid" id="stats-grid">
-      <div class="stat-card green">  <div class="stat-label">Ingresos</div>        <div class="stat-value green"  id="d-ingresos">—</div>  <div class="stat-sub" id="d-ingresos-sub">—</div></div>
-      <div class="stat-card red">    <div class="stat-label">Gastos Totales</div>  <div class="stat-value red"    id="d-gastos">—</div>    <div class="stat-sub" id="d-gastos-sub">Fijos + Variables</div></div>
-      <div class="stat-card yellow"> <div class="stat-label">Pagado</div>          <div class="stat-value yellow" id="d-pagado">—</div>    <div class="stat-sub" id="d-pagado-sub">Este mes</div></div>
-      <div class="stat-card blue">   <div class="stat-label">Pendiente</div>       <div class="stat-value blue"   id="d-pendiente">—</div> <div class="stat-sub">Por cubrir</div></div>
-      <div class="stat-card purple"> <div class="stat-label">Ahorro</div>          <div class="stat-value purple" id="d-ahorro">—</div>    <div class="stat-sub" id="d-ahorro-sub">—</div></div>
-      <div class="stat-card green">  <div class="stat-label">Saldo Disponible</div><div class="stat-value green"  id="d-saldo">—</div>    <div class="stat-sub">Libre al mes</div></div>
+      <div class="stat-card green">
+        <div class="stat-label">Ingresos</div>
+        <div class="stat-value green" id="d-ingresos">$0.00</div>
+        <div class="stat-sub" id="d-ingresos-sub">Mes completo</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-label">Gastos Totales</div>
+        <div class="stat-value red" id="d-gastos">$0.00</div>
+        <div class="stat-sub">Fijos + Variables</div>
+      </div>
+      <div class="stat-card yellow">
+        <div class="stat-label">Pagado</div>
+        <div class="stat-value yellow" id="d-pagado">$0.00</div>
+        <div class="stat-sub">Este mes</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">Pendiente</div>
+        <div class="stat-value blue" id="d-pendiente">$0.00</div>
+        <div class="stat-sub">Por cubrir</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-label">Ahorro</div>
+        <div class="stat-value purple" id="d-ahorro">$0.00</div>
+        <div class="stat-sub" id="d-ahorro-sub">Meta configurada</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Saldo Disponible</div>
+        <div class="stat-value green" id="d-saldo">$0.00</div>
+        <div class="stat-sub">Libre al mes</div>
+      </div>
     </div>
+
+    <!-- Barra de Progreso -->
     <div class="prog-wrap">
       <div class="prog-label">
         <span>Uso del presupuesto (Gastos / Ingresos)</span>
-        <span id="prog-pct">—%</span>
+        <span id="prog-pct">0%</span>
       </div>
       <div class="prog-track"><div class="prog-fill" id="prog-bar" style="width:0%"></div></div>
     </div>
+
+    <!-- Contenedores de Gráficos -->
     <div class="chart-row">
       <div class="chart-card">
         <div class="chart-title">Gastos Variables por Categoría</div>
-        <div class="donut-wrap" id="donut-wrap">
-          <svg class="donut-svg" viewBox="0 0 120 120" width="120" height="120" id="donut-svg">
-            <circle cx="60" cy="60" r="48" fill="none" stroke="#1c1c2e" stroke-width="20"/>
-          </svg>
-          <div class="donut-legend" id="donut-legend"><span style="color:var(--txt3);font-size:13px">Sin datos</span></div>
+        <div class="donut-wrap" id="donut-wrap" style="text-align:center; padding:20px; color:var(--txt3);">
+          Sin datos
         </div>
       </div>
       <div class="chart-card">
         <div class="chart-title">Ingresos vs Gastos</div>
-        <div class="bar-chart" id="bar-main"></div>
+        <div class="bar-chart" id="bar-main" style="padding:10px; color:var(--txt3); font-size:13px;">Vista general sincronizada</div>
       </div>
     </div>
+
     <div class="chart-card" style="margin-bottom:20px">
       <div class="chart-title">Estado de Pagos</div>
-      <div class="bar-chart" id="bar-estado"></div>
+      <div class="bar-chart" id="bar-estado" style="padding:10px; color:var(--txt3); font-size:13px;">Control de compromisos financieros</div>
     </div>
   </div>
 	
@@ -920,6 +950,11 @@ function sincronizarDesdeSlider(val) {
   if (lbl) lbl.textContent = val + '%';
 }
 
+	function cambiarMes(val) {
+  mesActual = val;
+  actualizarDashboard();
+}
+
 async function actualizarDashboard() {
   const user = window.auth.currentUser;
   if (!user) return;
@@ -927,46 +962,81 @@ async function actualizarDashboard() {
   try {
     // 1. Obtener Ingresos
     const ingSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'ingresos'));
-    let totalIngresos = 0;
-    ingSnap.forEach(doc => { totalIngresos += Number(doc.data().Monto || 0); });
+    let totalIng = 0, q1Ing = 0, q2Ing = 0;
+    ingSnap.forEach(doc => {
+      const r = doc.data();
+      const m = Number(r.Monto || 0);
+      if (r.Mes === mesActual || !r.Mes) {
+        totalIng += m;
+        if (r.Periodo === 'Q1') q1Ing += m; else q2Ing += m;
+      }
+    });
 
     // 2. Obtener Gastos Fijos
     const gfSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'gastosFijos'));
-    let totalGastosFijos = 0;
-    let totalPagadoFijos = 0;
+    let totalGf = 0, q1Gf = 0, q2Gf = 0, pagadoFijos = 0, pendienteFijos = 0;
     gfSnap.forEach(doc => {
-      const data = doc.data();
-      const monto = Number(data.Monto || 0);
-      totalGastosFijos += monto;
-      if (data.Pagado) totalPagadoFijos += monto;
+      const r = doc.data();
+      const m = Number(r.Monto || 0);
+      if (r.Mes === mesActual || !r.Mes) {
+        totalGf += m;
+        if (r.Periodo === 'Q1') q1Gf += m; else q2Gf += m;
+        if (r.Pagado) pagadoFijos += m; else pendienteFijos += m;
+      }
     });
 
     // 3. Obtener Gastos Variables
     const gvSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'gastosVariables'));
-    let totalGastosVariables = 0;
-    gvSnap.forEach(doc => { totalGastosVariables += Number(doc.data().Monto || 0); });
+    let totalGv = 0, q1Gv = 0, q2Gv = 0;
+    gvSnap.forEach(doc => {
+      const r = doc.data();
+      const m = Number(r.Monto || 0);
+      if (r.Mes === mesActual || !r.Mes) {
+        totalGv += m;
+        if (r.Periodo === 'Q1') q1Gv += m; else q2Gv += m;
+      }
+    });
 
-    const gastosTotales = totalGastosFijos + totalGastosVariables;
-    const saldoDisponible = totalIngresos - gastosTotales;
+    // 4. Obtener Meta de Ahorro del Mes
+    let porcentajeAhorro = 20; // Default
+    try {
+      const ahDoc = await window.getDoc(window.doc(window.db, 'users', user.uid, 'configuracionAhorro', mesActual));
+      if (ahDoc.exists()) porcentajeAhorro = Number(ahDoc.data().PorcentajeAhorro || 20);
+    } catch(err) { console.error(err); }
 
-    // Actualizar elementos visuales del Dashboard si existen
-    const dashSub = document.getElementById('dash-subtitle');
-    if (dashSub) dashSub.textContent = `Resumen general de tu cuenta`;
+    const montoAhorro = (totalIng * porcentajeAhorro) / 100;
+    const gastosTotales = totalGf + totalGv;
+    const pagadoTotal = pagadoFijos; // Puedes sumar pagos variables si aplicara
+    const pendienteTotal = (totalGf - pagadoFijos) + totalGv;
+    const saldoDisponible = totalIng - gastosTotales - montoAhorro;
+    const usoPct = totalIng > 0 ? Math.min(100, Math.round((gastosTotales / totalIng) * 100)) : 0;
 
-    const lblIng = document.getElementById('d-ingresos');
-    if (lblIng) lblIng.textContent = `$${totalIngresos.toFixed(2)}`;
+    // Pintar valores en el HTML de Quincenas
+    document.getElementById('qq1-ing').textContent = `$${q1Ing.toFixed(2)}`;
+    document.getElementById('qq1-gf').textContent = `$${q1Gf.toFixed(2)}`;
+    document.getElementById('qq1-gv').textContent = `$${q1Gv.toFixed(2)}`;
+    document.getElementById('qq1-pagado').textContent = `$${q1Gf.toFixed(2)}`; // O ajustado a pagados Q1
 
-    const lblGastos = document.getElementById('d-gastos');
-    if (lblGastos) lblGastos.textContent = `$${gastosTotales.toFixed(2)}`;
+    document.getElementById('qq2-ing').textContent = `$${q2Ing.toFixed(2)}`;
+    document.getElementById('qq2-gf').textContent = `$${q2Gf.toFixed(2)}`;
+    document.getElementById('qq2-gv').textContent = `$${q2Gv.toFixed(2)}`;
+    document.getElementById('qq2-pagado').textContent = `$${q2Gf.toFixed(2)}`;
 
-    const lblPagado = document.getElementById('d-pagado');
-    if (lblPagado) lblPagado.textContent = `$${totalPagadoFijos.toFixed(2)}`;
+    // Pintar valores en las 6 Tarjetas Principales
+    document.getElementById('d-ingresos').textContent = `$${totalIng.toFixed(2)}`;
+    document.getElementById('d-gastos').textContent = `$${gastosTotales.toFixed(2)}`;
+    document.getElementById('d-pagado').textContent = `$${pagadoTotal.toFixed(2)}`;
+    document.getElementById('d-pendiente').textContent = `$${pendienteTotal.toFixed(2)}`;
+    document.getElementById('d-ahorro').textContent = `$${montoAhorro.toFixed(2)}`;
+    document.getElementById('d-saldo').textContent = `$${saldoDisponible.toFixed(2)}`;
+    document.getElementById('d-ahorro-sub').textContent = `${porcentajeAhorro}% sobre ingresos`;
 
-    const lblSaldo = document.getElementById('d-saldo');
-    if (lblSaldo) lblSaldo.textContent = `$${saldoDisponible.toFixed(2)}`;
+    // Actualizar barra de progreso
+    document.getElementById('prog-pct').textContent = `${usoPct}%`;
+    document.getElementById('prog-bar').style.width = `${usoPct}%`;
 
   } catch (e) {
-    console.error("Error al actualizar dashboard:", e);
+    console.error("Error al calcular el dashboard:", e);
   }
 }
 
