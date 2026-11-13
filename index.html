@@ -454,32 +454,32 @@ button:disabled {
     <div class="stats-grid" id="stats-grid">
       <div class="stat-card green">
         <div class="stat-label">Ingresos</div>
-        <div class="stat-value green" id="d-ingresos">$0.00</div>
+        <div class="stat-value green" id="d-ingresos">Q0.00</div>
         <div class="stat-sub" id="d-ingresos-sub">Mes completo</div>
       </div>
       <div class="stat-card red">
         <div class="stat-label">Gastos Totales</div>
-        <div class="stat-value red" id="d-gastos">$0.00</div>
+        <div class="stat-value red" id="d-gastos">Q0.00</div>
         <div class="stat-sub">Fijos + Variables</div>
       </div>
       <div class="stat-card yellow">
         <div class="stat-label">Pagado</div>
-        <div class="stat-value yellow" id="d-pagado">$0.00</div>
+        <div class="stat-value yellow" id="d-pagado">Q0.00</div>
         <div class="stat-sub">Este mes</div>
       </div>
       <div class="stat-card blue">
         <div class="stat-label">Pendiente</div>
-        <div class="stat-value blue" id="d-pendiente">$0.00</div>
+        <div class="stat-value blue" id="d-pendiente">Q0.00</div>
         <div class="stat-sub">Por cubrir</div>
       </div>
       <div class="stat-card purple">
         <div class="stat-label">Ahorro</div>
-        <div class="stat-value purple" id="d-ahorro">$0.00</div>
+        <div class="stat-value purple" id="d-ahorro">Q0.00</div>
         <div class="stat-sub" id="d-ahorro-sub">Meta configurada</div>
       </div>
       <div class="stat-card green">
         <div class="stat-label">Saldo Disponible</div>
-        <div class="stat-value green" id="d-saldo">$0.00</div>
+        <div class="stat-value green" id="d-saldo">Q0.00</div>
         <div class="stat-sub">Libre al mes</div>
       </div>
     </div>
@@ -549,7 +549,7 @@ button:disabled {
     <div class="table-wrap">
       <div class="table-header-bar">
         <span>Ingresos del mes</span>
-        <span id="ing-total-label" style="color:var(--green);font-size:15px">Total: $0.00</span>
+        <span id="ing-total-label" style="color:var(--green);font-size:15px">Total: Q0.00</span>
       </div>
       <table>
         <thead><tr><th>Descripción</th><th>Monto</th><th>Fecha registro</th><th>Acciones</th></tr></thead>
@@ -598,7 +598,7 @@ button:disabled {
     <div class="table-wrap">
       <div class="table-header-bar">
         <span>Gastos fijos del mes</span>
-        <span id="gf-total-label" style="color:var(--red);font-size:15px">Total: $0.00</span>
+        <span id="gf-total-label" style="color:var(--red);font-size:15px">Total: Q0.00</span>
       </div>
       <table>
         <thead><tr><th>Nombre</th><th>Monto</th><th>Vencimiento</th><th>Estado</th><th>Acciones</th></tr></thead>
@@ -651,7 +651,7 @@ button:disabled {
     <div class="table-wrap">
       <div class="table-header-bar">
         <span>Gastos variables del mes</span>
-        <span id="gv-total-label" style="color:var(--red);font-size:15px">Total: $0.00</span>
+        <span id="gv-total-label" style="color:var(--red);font-size:15px">Total: Q0.00</span>
       </div>
       <table>
         <thead><tr><th>Descripción</th><th>Categoría</th><th>Monto</th><th>Fecha</th><th>Acciones</th></tr></thead>
@@ -686,13 +686,13 @@ button:disabled {
       </div>
       <div class="ahorro-calc">
         <div class="chart-title">Resumen de Ahorro</div>
-        <div class="ahorro-row"><span>Total de ingresos</span><strong class="sv-green" id="ah-ingresos">$0.00</strong></div>
+        <div class="ahorro-row"><span>Total de ingresos</span><strong class="sv-green" id="ah-ingresos">Q0.00</strong></div>
         <div class="ahorro-row"><span>Porcentaje configurado</span><strong style="color:var(--accent2)" id="ah-pct">20%</strong></div>
-        <div class="ahorro-row"><span>Monto a ahorrar</span><strong style="color:var(--accent2)" id="ah-monto">$0.00</strong></div>
-        <div class="ahorro-row"><span>Total gastos</span><strong class="sv-red" id="ah-gastos">$0.00</strong></div>
+        <div class="ahorro-row"><span>Monto a ahorrar</span><strong style="color:var(--accent2)" id="ah-monto">Q0.00</strong></div>
+        <div class="ahorro-row"><span>Total gastos</span><strong class="sv-red" id="ah-gastos">Q0.00</strong></div>
         <div class="ahorro-row" style="background:rgba(16,185,129,0.05); margin:0 -24px; padding:14px 24px; border:none;">
           <span><strong>Saldo disponible</strong></span>
-          <strong class="sv-green" id="ah-saldo" style="font-size:22px">$0.00</strong>
+          <strong class="sv-green" id="ah-saldo" style="font-size:22px">Q0.00</strong>
         </div>
       </div>
     </div>
@@ -1192,6 +1192,36 @@ async function actualizarDashboard() {
       if (ahDoc.exists()) porcentajeAhorro = Number(ahDoc.data().PorcentajeAhorro || 20);
     } catch(err) { console.error(err); }
 
+    const montoAhorro = (totalIng * porcentajeAhorro) / 100;
+    const gastosTotales = totalGf + totalGv;
+    const pagadoTotal = pagadoFijos;
+    const pendienteTotal = (totalGf - pagadoFijos) + totalGv;
+    const saldoDisponible = totalIng - gastosTotales - montoAhorro;
+    const usoPct = totalIng > 0 ? Math.min(100, Math.round((gastosTotales / totalIng) * 100)) : 0;
+
+    document.getElementById('qq1-ing').textContent = `$${q1Ing.toFixed(2)}`;
+    document.getElementById('qq1-gf').textContent = `$${q1Gf.toFixed(2)}`;
+    document.getElementById('qq1-gv').textContent = `$${q1Gv.toFixed(2)}`;
+    document.getElementById('qq1-pagado').textContent = `$${q1Gf.toFixed(2)}`;
+
+    document.getElementById('qq2-ing').textContent = `$${q2Ing.toFixed(2)}`;
+    document.getElementById('qq2-gf').textContent = `$${q2Gf.toFixed(2)}`;
+    document.getElementById('qq2-gv').textContent = `$${q2Gv.toFixed(2)}`;
+    document.getElementById('qq2-pagado').textContent = `$${q2Gf.toFixed(2)}`;
+
+    document.getElementById('d-ingresos').textContent = `$${totalIng.toFixed(2)}`;
+    document.getElementById('d-gastos').textContent = `$${gastosTotales.toFixed(2)}`;
+    document.getElementById('d-pagado').textContent = `$${pagadoTotal.toFixed(2)}`;
+    document.getElementById('d-pendiente').textContent = `$${pendienteTotal.toFixed(2)}`;
+    document.getElementById('d-ahorro').textContent = `$${montoAhorro.toFixed(2)}`;
+    document.getElementById('d-saldo').textContent = `$${saldoDisponible.toFixed(2)}`;
+    document.getElementById('d-ahorro-sub').textContent = `${porcentajeAhorro}% sobre ingresos`;
+
+    document.getElementById('prog-pct').textContent = `${usoPct}%`;
+    document.getElementById('prog-bar').style.width = `${usoPct}%`;
+  } catch(e) { console.error(e); }
+
+	
 	  // ── 5. RENDERIZAR GRÁFICOS E INFORMACIÓN INFERIOR ──
 
     // A. Gastos Variables por Categoría
@@ -1271,35 +1301,6 @@ async function actualizarDashboard() {
           </div>
         </div>`;
     }
-
-    const montoAhorro = (totalIng * porcentajeAhorro) / 100;
-    const gastosTotales = totalGf + totalGv;
-    const pagadoTotal = pagadoFijos;
-    const pendienteTotal = (totalGf - pagadoFijos) + totalGv;
-    const saldoDisponible = totalIng - gastosTotales - montoAhorro;
-    const usoPct = totalIng > 0 ? Math.min(100, Math.round((gastosTotales / totalIng) * 100)) : 0;
-
-    document.getElementById('qq1-ing').textContent = `$${q1Ing.toFixed(2)}`;
-    document.getElementById('qq1-gf').textContent = `$${q1Gf.toFixed(2)}`;
-    document.getElementById('qq1-gv').textContent = `$${q1Gv.toFixed(2)}`;
-    document.getElementById('qq1-pagado').textContent = `$${q1Gf.toFixed(2)}`;
-
-    document.getElementById('qq2-ing').textContent = `$${q2Ing.toFixed(2)}`;
-    document.getElementById('qq2-gf').textContent = `$${q2Gf.toFixed(2)}`;
-    document.getElementById('qq2-gv').textContent = `$${q2Gv.toFixed(2)}`;
-    document.getElementById('qq2-pagado').textContent = `$${q2Gf.toFixed(2)}`;
-
-    document.getElementById('d-ingresos').textContent = `$${totalIng.toFixed(2)}`;
-    document.getElementById('d-gastos').textContent = `$${gastosTotales.toFixed(2)}`;
-    document.getElementById('d-pagado').textContent = `$${pagadoTotal.toFixed(2)}`;
-    document.getElementById('d-pendiente').textContent = `$${pendienteTotal.toFixed(2)}`;
-    document.getElementById('d-ahorro').textContent = `$${montoAhorro.toFixed(2)}`;
-    document.getElementById('d-saldo').textContent = `$${saldoDisponible.toFixed(2)}`;
-    document.getElementById('d-ahorro-sub').textContent = `${porcentajeAhorro}% sobre ingresos`;
-
-    document.getElementById('prog-pct').textContent = `${usoPct}%`;
-    document.getElementById('prog-bar').style.width = `${usoPct}%`;
-  } catch(e) { console.error(e); }
 }
 
 function inicializarMesSelector() {
