@@ -1158,34 +1158,51 @@ async function actualizarDashboard() {
   if (!user) return;
 
   try {
+    // 1. Obtener Ingresos
     const ingSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'ingresos'));
     let totalIng = 0, q1Ing = 0, q2Ing = 0;
     ingSnap.forEach(doc => {
       const r = doc.data();
       const m = Number(r.Monto || 0);
-      totalIng += m;
-      if (r.Periodo === 'Q1') q1Ing += m; else q2Ing += m;
+      // Si coincide el mes o no está definido, lo sumamos
+      if (!r.Mes || r.Mes === mesActual || r.Mes.startsWith(mesActual)) {
+        totalIng += m;
+        if (r.Periodo === 'Q1') q1Ing += m; else q2Ing += m;
+      }
     });
 
+    // 2. Obtener Gastos Fijos
     const gfSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'gastosFijos'));
     let totalGf = 0, q1Gf = 0, q2Gf = 0, pagadoFijos = 0;
     gfSnap.forEach(doc => {
       const r = doc.data();
       const m = Number(r.Monto || 0);
-      totalGf += m;
-      if (r.Periodo === 'Q1') q1Gf += m; else q2Gf += m;
-      if (r.Pagado) pagadoFijos += m;
+      if (!r.Mes || r.Mes === mesActual || r.Mes.startsWith(mesActual)) {
+        totalGf += m;
+        if (r.Periodo === 'Q1') q1Gf += m; else q2Gf += m;
+        if (r.Pagado) pagadoFijos += m;
+      }
     });
 
+    // 3. Obtener Gastos Variables
     const gvSnap = await window.getDocs(window.collection(window.db, 'users', user.uid, 'gastosVariables'));
     let totalGv = 0, q1Gv = 0, q2Gv = 0;
+    let categoriasTotales = {};
+    
     gvSnap.forEach(doc => {
       const r = doc.data();
       const m = Number(r.Monto || 0);
-      totalGv += m;
-      if (r.Periodo === 'Q1') q1Gv += m; else q2Gv += m;
+      if (!r.Mes || r.Mes === mesActual || r.Mes.startsWith(mesActual)) {
+        totalGv += m;
+        if (r.Periodo === 'Q1') q1Gv += m; else q2Gv += m;
+        
+        // Acumular por categoría para el gráfico inferior
+        const cat = r.Categoria || 'General';
+        categoriasTotales[cat] = (categoriasTotales[cat] || 0) + m;
+      }
     });
 
+    // 4. Obtener Meta de Ahorro del Mes
     let porcentajeAhorro = 20;
     try {
       const ahDoc = await window.getDoc(window.doc(window.db, 'users', user.uid, 'configuracionAhorro', mesActual));
@@ -1199,41 +1216,33 @@ async function actualizarDashboard() {
     const saldoDisponible = totalIng - gastosTotales - montoAhorro;
     const usoPct = totalIng > 0 ? Math.min(100, Math.round((gastosTotales / totalIng) * 100)) : 0;
 
-    document.getElementById('qq1-ing').textContent = `$${q1Ing.toFixed(2)}`;
-    document.getElementById('qq1-gf').textContent = `$${q1Gf.toFixed(2)}`;
-    document.getElementById('qq1-gv').textContent = `$${q1Gv.toFixed(2)}`;
-    document.getElementById('qq1-pagado').textContent = `$${q1Gf.toFixed(2)}`;
+    // --- PINTAR QUINCENAS (Con Quetzales Q) ---
+    document.getElementById('qq1-ing').textContent = `Q${q1Ing.toFixed(2)}`;
+    document.getElementById('qq1-gf').textContent = `Q${q1Gf.toFixed(2)}`;
+    document.getElementById('qq1-gv').textContent = `Q${q1Gv.toFixed(2)}`;
+    document.getElementById('qq1-pagado').textContent = `Q${q1Gf.toFixed(2)}`;
 
-    document.getElementById('qq2-ing').textContent = `$${q2Ing.toFixed(2)}`;
-    document.getElementById('qq2-gf').textContent = `$${q2Gf.toFixed(2)}`;
-    document.getElementById('qq2-gv').textContent = `$${q2Gv.toFixed(2)}`;
-    document.getElementById('qq2-pagado').textContent = `$${q2Gf.toFixed(2)}`;
+    document.getElementById('qq2-ing').textContent = `Q${q2Ing.toFixed(2)}`;
+    document.getElementById('qq2-gf').textContent = `Q${q2Gf.toFixed(2)}`;
+    document.getElementById('qq2-gv').textContent = `Q${q2Gv.toFixed(2)}`;
+    document.getElementById('qq2-pagado').textContent = `Q${q2Gf.toFixed(2)}`;
 
-    document.getElementById('d-ingresos').textContent = `$${totalIng.toFixed(2)}`;
-    document.getElementById('d-gastos').textContent = `$${gastosTotales.toFixed(2)}`;
-    document.getElementById('d-pagado').textContent = `$${pagadoTotal.toFixed(2)}`;
-    document.getElementById('d-pendiente').textContent = `$${pendienteTotal.toFixed(2)}`;
-    document.getElementById('d-ahorro').textContent = `$${montoAhorro.toFixed(2)}`;
-    document.getElementById('d-saldo').textContent = `$${saldoDisponible.toFixed(2)}`;
+    // --- PINTAR TARJETAS PRINCIPALES (Con Quetzales Q) ---
+    document.getElementById('d-ingresos').textContent = `Q${totalIng.toFixed(2)}`;
+    document.getElementById('d-gastos').textContent = `Q${gastosTotales.toFixed(2)}`;
+    document.getElementById('d-pagado').textContent = `Q${pagadoTotal.toFixed(2)}`;
+    document.getElementById('d-pendiente').textContent = `Q${pendienteTotal.toFixed(2)}`;
+    document.getElementById('d-ahorro').textContent = `Q${montoAhorro.toFixed(2)}`;
+    document.getElementById('d-saldo').textContent = `Q${saldoDisponible.toFixed(2)}`;
     document.getElementById('d-ahorro-sub').textContent = `${porcentajeAhorro}% sobre ingresos`;
 
+    // Barra de progreso
     document.getElementById('prog-pct').textContent = `${usoPct}%`;
     document.getElementById('prog-bar').style.width = `${usoPct}%`;
-  } catch(e) { console.error(e); }
 
-	
-	  // ── 5. RENDERIZAR GRÁFICOS E INFORMACIÓN INFERIOR ──
+    // --- 5. RENDERIZAR GRÁFICOS E INFORMACIÓN INFERIOR ---
 
     // A. Gastos Variables por Categoría
-    let categoriasTotales = {};
-    gvSnap.forEach(doc => {
-      const r = doc.data();
-      if (r.Mes === mesActual || !r.Mes) {
-        const cat = r.Categoria || 'General';
-        categoriasTotales[cat] = (categoriasTotales[cat] || 0) + Number(r.Monto || 0);
-      }
-    });
-
     const donutWrap = document.getElementById('donut-wrap');
     if (donutWrap) {
       let catHtml = '';
@@ -1246,7 +1255,7 @@ async function actualizarDashboard() {
           catHtml += `
             <div style="font-size:13px; display:flex; justify-content:space-between; align-items:center;">
               <span style="color:var(--txt2);">${cat}</span>
-              <strong>$${montoCat.toFixed(2)} <span style="font-size:11px; color:var(--txt3);">(${pctCat}%)</span></strong>
+              <strong>Q${montoCat.toFixed(2)} <span style="font-size:11px; color:var(--txt3);">(${pctCat}%)</span></strong>
             </div>
             <div style="background:var(--bg3); height:6px; border-radius:3px; overflow:hidden; margin-bottom:4px;">
               <div style="background:var(--accent2); width:${pctCat}%; height:100%;"></div>
@@ -1259,7 +1268,7 @@ async function actualizarDashboard() {
       }
     }
 
-    // B. Ingresos vs Gastos (Barra comparativa)
+    // B. Ingresos vs Gastos
     const barMain = document.getElementById('bar-main');
     if (barMain) {
       const maxVal = Math.max(totalIng, gastosTotales, 1);
@@ -1269,7 +1278,7 @@ async function actualizarDashboard() {
         <div style="display:flex; flex-direction:column; gap:10px;">
           <div>
             <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
-              <span>Ingresos Totales</span><strong class="sv-green">$${totalIng.toFixed(2)}</strong>
+              <span>Ingresos Totales</span><strong class="sv-green">Q${totalIng.toFixed(2)}</strong>
             </div>
             <div style="background:var(--bg3); height:8px; border-radius:4px; overflow:hidden;">
               <div style="background:var(--green); width:${pIng}%; height:100%;"></div>
@@ -1277,7 +1286,7 @@ async function actualizarDashboard() {
           </div>
           <div>
             <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
-              <span>Gastos Totales (Fijos + Variables)</span><strong class="sv-red">$${gastosTotales.toFixed(2)}</strong>
+              <span>Gastos Totales (Fijos + Variables)</span><strong class="sv-red">Q${gastosTotales.toFixed(2)}</strong>
             </div>
             <div style="background:var(--bg3); height:8px; border-radius:4px; overflow:hidden;">
               <div style="background:var(--red); width:${pGas}%; height:100%;"></div>
@@ -1286,14 +1295,14 @@ async function actualizarDashboard() {
         </div>`;
     }
 
-    // C. Estado de Pagos (Compromisos Fijos)
+    // C. Estado de Pagos
     const barEstado = document.getElementById('bar-estado');
     if (barEstado) {
       const pctPagadoFijos = totalGf > 0 ? Math.round((pagadoFijos / totalGf) * 100) : 0;
       barEstado.innerHTML = `
         <div style="display:flex; flex-direction:column; gap:10px;">
           <div style="display:flex; justify-content:space-between; font-size:13px;">
-            <span>Compromisos fijos pagados: <strong>$${pagadoFijos.toFixed(2)}</strong> de <strong>$${totalGf.toFixed(2)}</strong></span>
+            <span>Compromisos fijos pagados: <strong>Q${pagadoFijos.toFixed(2)}</strong> de <strong>Q${totalGf.toFixed(2)}</strong></span>
             <span class="sv-yellow">${pctPagadoFijos}% completado</span>
           </div>
           <div style="background:var(--bg3); height:10px; border-radius:5px; overflow:hidden;">
@@ -1301,6 +1310,10 @@ async function actualizarDashboard() {
           </div>
         </div>`;
     }
+
+  } catch (e) {
+    console.error("Error al calcular el dashboard:", e);
+  }
 }
 
 function inicializarMesSelector() {
