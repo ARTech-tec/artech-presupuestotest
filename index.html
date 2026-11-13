@@ -1192,6 +1192,86 @@ async function actualizarDashboard() {
       if (ahDoc.exists()) porcentajeAhorro = Number(ahDoc.data().PorcentajeAhorro || 20);
     } catch(err) { console.error(err); }
 
+	  // ── 5. RENDERIZAR GRÁFICOS E INFORMACIÓN INFERIOR ──
+
+    // A. Gastos Variables por Categoría
+    let categoriasTotales = {};
+    gvSnap.forEach(doc => {
+      const r = doc.data();
+      if (r.Mes === mesActual || !r.Mes) {
+        const cat = r.Categoria || 'General';
+        categoriasTotales[cat] = (categoriasTotales[cat] || 0) + Number(r.Monto || 0);
+      }
+    });
+
+    const donutWrap = document.getElementById('donut-wrap');
+    if (donutWrap) {
+      let catHtml = '';
+      const keys = Object.keys(categoriasTotales);
+      if (keys.length > 0) {
+        catHtml = '<div style="display:flex; flex-direction:column; gap:8px; text-align:left;">';
+        keys.forEach(cat => {
+          const montoCat = categoriasTotales[cat];
+          const pctCat = totalGv > 0 ? Math.round((montoCat / totalGv) * 100) : 0;
+          catHtml += `
+            <div style="font-size:13px; display:flex; justify-content:space-between; align-items:center;">
+              <span style="color:var(--txt2);">${cat}</span>
+              <strong>$${montoCat.toFixed(2)} <span style="font-size:11px; color:var(--txt3);">(${pctCat}%)</span></strong>
+            </div>
+            <div style="background:var(--bg3); height:6px; border-radius:3px; overflow:hidden; margin-bottom:4px;">
+              <div style="background:var(--accent2); width:${pctCat}%; height:100%;"></div>
+            </div>`;
+        });
+        catHtml += '</div>';
+        donutWrap.innerHTML = catHtml;
+      } else {
+        donutWrap.innerHTML = '<span style="color:var(--txt3);">Sin gastos variables registrados este mes</span>';
+      }
+    }
+
+    // B. Ingresos vs Gastos (Barra comparativa)
+    const barMain = document.getElementById('bar-main');
+    if (barMain) {
+      const maxVal = Math.max(totalIng, gastosTotales, 1);
+      const pIng = Math.round((totalIng / maxVal) * 100);
+      const pGas = Math.round((gastosTotales / maxVal) * 100);
+      barMain.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+              <span>Ingresos Totales</span><strong class="sv-green">$${totalIng.toFixed(2)}</strong>
+            </div>
+            <div style="background:var(--bg3); height:8px; border-radius:4px; overflow:hidden;">
+              <div style="background:var(--green); width:${pIng}%; height:100%;"></div>
+            </div>
+          </div>
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+              <span>Gastos Totales (Fijos + Variables)</span><strong class="sv-red">$${gastosTotales.toFixed(2)}</strong>
+            </div>
+            <div style="background:var(--bg3); height:8px; border-radius:4px; overflow:hidden;">
+              <div style="background:var(--red); width:${pGas}%; height:100%;"></div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    // C. Estado de Pagos (Compromisos Fijos)
+    const barEstado = document.getElementById('bar-estado');
+    if (barEstado) {
+      const pctPagadoFijos = totalGf > 0 ? Math.round((pagadoFijos / totalGf) * 100) : 0;
+      barEstado.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; font-size:13px;">
+            <span>Compromisos fijos pagados: <strong>$${pagadoFijos.toFixed(2)}</strong> de <strong>$${totalGf.toFixed(2)}</strong></span>
+            <span class="sv-yellow">${pctPagadoFijos}% completado</span>
+          </div>
+          <div style="background:var(--bg3); height:10px; border-radius:5px; overflow:hidden;">
+            <div style="background:var(--green); width:${pctPagadoFijos}%; height:100%; transition: width 0.3s ease;"></div>
+          </div>
+        </div>`;
+    }
+
     const montoAhorro = (totalIng * porcentajeAhorro) / 100;
     const gastosTotales = totalGf + totalGv;
     const pagadoTotal = pagadoFijos;
